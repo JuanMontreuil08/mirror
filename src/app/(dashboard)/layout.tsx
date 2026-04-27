@@ -16,6 +16,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             Stock Tracker
           </Link>
           <div className="flex items-center gap-5">
+            <Link href="/sentiment" className="text-xs text-gray-500 hover:text-gray-900 transition-colors">
+              Sentiment
+            </Link>
             <span className="text-xs text-gray-300">{user?.email}</span>
             <form action={signOut}>
               <button
