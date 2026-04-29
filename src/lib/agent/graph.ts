@@ -83,8 +83,11 @@ function buildModel() {
 }
 
 function buildSystemPrompt(portfolioContext: string) {
+  const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD in UTC
   return `You are a friendly personal investment assistant for a Latin American retail investor.
 You have access to the user's portfolio data and can fetch live and historical prices, and stock news.
+
+TODAY'S DATE: ${today}. Use this to resolve relative dates like "yesterday", "last week", "this month" when deciding how many days to pass to tools.
 
 LANGUAGE RULE: You MUST reply in the exact same language the user writes in. If the user writes in English, reply in English. If the user writes in Spanish, reply in Spanish. No exceptions.
 

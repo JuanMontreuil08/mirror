@@ -64,8 +64,8 @@ export function SentimentHeader({
           <p className={`text-lg font-semibold ${display.color}`}>{display.text}</p>
           <p className="text-sm text-gray-500">
             {aggregate.post_count < 20
-              ? `Only ${aggregate.post_count} posts in the last 24 hours — interpret with caution.`
-              : `Based on ${aggregate.post_count} Reddit posts in the last 24 hours.`}
+              ? `Only ${aggregate.post_count} X posts in the last 7 days — interpret with caution.`
+              : `Based on ${aggregate.post_count} X posts in the last 7 days.`}
           </p>
         </div>
       </div>

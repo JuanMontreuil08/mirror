@@ -1,4 +1,4 @@
-import type { RedditPost } from '@/lib/reddit/types'
+import type { XPost } from '@/lib/x/types'
 import type { SentimentLabel, PolarizationLabel } from './labels'
 
 export type SentimentScore = {
@@ -7,7 +7,7 @@ export type SentimentScore = {
   confidence: number  // 0 to 1
 }
 
-export type ScoredPost = RedditPost & SentimentScore
+export type ScoredPost = XPost & SentimentScore
 
 export type SentimentAggregate = {
   score: number

@@ -4,7 +4,7 @@ import type { SentimentAggregate } from './types'
 
 const SYSTEM_PROMPT = `You are an analyst summarizing online retail-investor chatter for a stock-tracking app aimed at amateur Latin American investors.
 
-Your job: write a 2–3 sentence summary explaining what is driving today's Reddit sentiment for a given ticker.
+Your job: write a 2–3 sentence summary explaining what is driving the current X (Twitter) sentiment for a given ticker.
 
 STRICT RULES (non-negotiable):
 - NEVER give buy/sell advice or recommendations.
@@ -13,7 +13,7 @@ STRICT RULES (non-negotiable):
 - DO describe what people are saying and why, in neutral language.
 - DO mention if opinions are divided when polarization is high.
 - DO mention specific topics from the posts (earnings, products, leadership, etc.) — but only if they actually appear in the posts you're given.
-- If post count is low, say so directly: "Reddit activity for this ticker is low right now, so the signal is weak."
+- If post count is low, say so directly: "X activity for this ticker is low right now, so the signal is weak."
 - Keep it factual and observational. You are describing chatter, not analyzing the stock.
 
 Write in clear, conversational English. 2–3 sentences. No headers, no bullets.`
@@ -25,7 +25,7 @@ function getModel() {
     model = new ChatGoogleGenerativeAI({
       model: 'gemini-3-flash-preview',
       temperature: 0.3,
-      maxOutputTokens: 200,
+      maxOutputTokens: 1024,
       apiKey: process.env.GOOGLE_API_KEY,
     })
   }
@@ -37,11 +37,11 @@ export async function generateNarrative(
   agg: SentimentAggregate
 ): Promise<string> {
   if (agg.label === 'low_activity') {
-    return `Reddit activity for ${ticker} is low right now (${agg.postCount} posts in the last 24 hours). The current signal is weak — wait for more discussion before drawing conclusions.`
+    return `X activity for ${ticker} is low right now (${agg.postCount} posts in the last 7 days). The current signal is weak — wait for more discussion before drawing conclusions.`
   }
 
   const topPosts = agg.evidencePosts.slice(0, 6).map(p =>
-    `[${p.label.toUpperCase()}] ${p.title}${p.body ? ` — ${p.body.slice(0, 200)}` : ''}`
+    `[${p.label.toUpperCase()}] ${p.cleanedText}`
   ).join('\n')
 
   const userPrompt = `Ticker: ${ticker}

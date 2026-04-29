@@ -44,7 +44,7 @@ function selectEvidence(posts: ScoredPost[]): ScoredPost[] {
   const mostPositive = [...posts].sort((a, b) => b.score - a.score).slice(0, 2)
   const mostNegative = [...posts].sort((a, b) => a.score - b.score).slice(0, 2)
   const mostEngaged = [...posts]
-    .sort((a, b) => (b.upvotes + b.commentCount) - (a.upvotes + a.commentCount))
+    .sort((a, b) => (b.likeCount + b.replyCount) - (a.likeCount + a.replyCount))
     .slice(0, 2)
 
   const seen = new Set<string>()
