@@ -22,10 +22,10 @@ interface Props {
 }
 
 const SUGGESTIONS = [
-  'How is my portfolio doing today?',
-  "What's the latest news on NVDA?",
-  'Which stock has the highest weight?',
-  'Show me NFLX price history for the last 2 weeks',
+  { text: 'How is my portfolio doing today?', icon: '📊' },
+  { text: "What's the latest news on NVDA?", icon: '📰' },
+  { text: 'Which stock has the highest weight?', icon: '⚖️' },
+  { text: 'Show me NFLX price history for the last 2 weeks', icon: '📈' },
 ]
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -36,28 +36,28 @@ function AssistantMessage({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         p: ({ children }) => (
-          <p className="text-sm text-gray-800 leading-relaxed mb-3 last:mb-0">{children}</p>
+          <p className="text-sm text-gray-700 leading-relaxed mb-3 last:mb-0">{children}</p>
         ),
         strong: ({ children }) => (
           <strong className="font-semibold text-gray-900">{children}</strong>
         ),
         em: ({ children }) => (
-          <em className="italic text-gray-700">{children}</em>
+          <em className="italic text-gray-600">{children}</em>
         ),
         ul: ({ children }) => (
-          <ul className="text-sm text-gray-800 space-y-1 mb-3 pl-4">{children}</ul>
+          <ul className="text-sm text-gray-700 space-y-1 mb-3 pl-4">{children}</ul>
         ),
         ol: ({ children }) => (
-          <ol className="text-sm text-gray-800 space-y-1 mb-3 pl-4 list-decimal">{children}</ol>
+          <ol className="text-sm text-gray-700 space-y-1 mb-3 pl-4 list-decimal">{children}</ol>
         ),
         li: ({ children }) => (
           <li className="leading-relaxed before:content-['–'] before:mr-2 before:text-gray-300">{children}</li>
         ),
         code: ({ children }) => (
-          <code className="font-mono text-xs bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 text-gray-700">{children}</code>
+          <code className="font-mono text-xs bg-stone-100 border border-stone-200 rounded px-1.5 py-0.5 text-gray-700">{children}</code>
         ),
         pre: ({ children }) => (
-          <pre className="font-mono text-xs bg-gray-50 border border-gray-100 rounded-lg p-4 overflow-x-auto mb-3 text-gray-700 leading-relaxed">{children}</pre>
+          <pre className="font-mono text-xs bg-stone-100 border border-stone-200 rounded-xl p-4 overflow-x-auto mb-3 text-gray-700 leading-relaxed">{children}</pre>
         ),
         h1: ({ children }) => (
           <h1 className="text-base font-semibold text-gray-900 mb-2 mt-4 first:mt-0">{children}</h1>
@@ -74,34 +74,34 @@ function AssistantMessage({ content }: { content: string }) {
           </div>
         ),
         thead: ({ children }) => (
-          <thead className="border-b border-gray-200">{children}</thead>
+          <thead className="border-b border-stone-200">{children}</thead>
         ),
         th: ({ children }) => (
-          <th className="text-left font-medium text-gray-500 uppercase tracking-wider text-[10px] pb-2 pr-6 first:pl-0">{children}</th>
+          <th className="text-left font-medium text-gray-400 uppercase tracking-wider text-[10px] pb-2 pr-6 first:pl-0">{children}</th>
         ),
         tbody: ({ children }) => (
-          <tbody className="divide-y divide-gray-50">{children}</tbody>
+          <tbody className="divide-y divide-stone-100">{children}</tbody>
         ),
         tr: ({ children }) => (
-          <tr className="hover:bg-gray-50/50 transition-colors">{children}</tr>
+          <tr className="hover:bg-stone-50/60 transition-colors">{children}</tr>
         ),
         td: ({ children }) => (
-          <td className="font-mono text-gray-800 py-1.5 pr-6 first:pl-0 tabular-nums">{children}</td>
+          <td className="font-mono text-gray-700 py-1.5 pr-6 first:pl-0 tabular-nums">{children}</td>
         ),
         a: ({ href, children }) => (
           <a
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-gray-900 underline underline-offset-2 decoration-gray-300 hover:decoration-gray-900 transition-colors"
+            className="text-gray-900 underline underline-offset-2 decoration-stone-300 hover:decoration-gray-900 transition-colors"
           >
             {children}
           </a>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-gray-200 pl-3 text-gray-500 mb-3">{children}</blockquote>
+          <blockquote className="border-l-2 border-stone-200 pl-3 text-gray-500 mb-3">{children}</blockquote>
         ),
-        hr: () => <hr className="border-gray-100 my-4" />,
+        hr: () => <hr className="border-stone-100 my-4" />,
       }}
     >
       {content}
@@ -136,16 +136,16 @@ function PortfolioPanel({
   const isUp = totalPnl >= 0
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden animate-slide-in-right">
       {/* Header */}
-      <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+      <div className="px-5 pt-5 pb-4 border-b border-stone-100">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Portfolio</p>
           <div className="flex items-center gap-3">
             {hasFees && (
               <button
                 onClick={() => setShowFees(v => !v)}
-                className={`text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded transition-colors ${
+                className={`text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded-md transition-all ${
                   showFees
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-300 hover:text-gray-500'
@@ -166,8 +166,11 @@ function PortfolioPanel({
           ${currentTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
         <div className={`flex items-center gap-1.5 mt-1.5 text-[11px] tabular-nums font-medium ${isUp ? 'text-emerald-600' : 'text-red-500'}`}>
+          <span className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[8px] font-bold ${isUp ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+            {isUp ? '↑' : '↓'}
+          </span>
           <span>{isUp ? '+' : '-'}${Math.abs(totalPnl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          <span className="text-gray-200">/</span>
+          <span className="text-gray-300">/</span>
           <span>{isUp ? '+' : ''}{totalPnlPct.toFixed(2)}%</span>
           <span className="text-gray-300 font-normal">vs cost</span>
         </div>
@@ -175,7 +178,7 @@ function PortfolioPanel({
 
       {/* Positions */}
       <div className="flex-1 overflow-y-auto">
-        {positions.map((p) => {
+        {positions.map((p, idx) => {
           const price = prices[p.ticker]
           const currentValue = price ? price.price * Number(p.quantity) : null
           const posFees = Number(p.total_fees ?? 0)
@@ -186,7 +189,11 @@ function PortfolioPanel({
           const posUp = pnl === null ? null : pnl >= 0
 
           return (
-            <div key={p.ticker} className="px-5 py-3.5 border-b border-gray-50 group hover:bg-gray-50/50 transition-colors">
+            <div
+              key={p.ticker}
+              className="px-5 py-3.5 border-b border-stone-50 hover:bg-stone-50/60 transition-colors animate-fade-in"
+              style={{ animationDelay: `${idx * 40}ms` }}
+            >
               <div className="flex items-start justify-between mb-1.5">
                 <div>
                   <span className="text-[13px] font-semibold text-gray-900 tracking-tight">{p.ticker}</span>
@@ -216,9 +223,9 @@ function PortfolioPanel({
               </div>
 
               {/* Weight bar */}
-              <div className="h-[2px] bg-gray-100 overflow-hidden rounded-full">
+              <div className="h-[2px] bg-stone-100 overflow-hidden rounded-full">
                 <div
-                  className="h-full bg-gray-800 rounded-full transition-all duration-500"
+                  className={`h-full rounded-full transition-all duration-700 ${weight >= 35 ? 'bg-amber-400' : 'bg-gray-800'}`}
                   style={{ width: `${Math.min(weight, 100)}%` }}
                 />
               </div>
@@ -227,7 +234,15 @@ function PortfolioPanel({
         })}
 
         {positions.length === 0 && (
-          <p className="text-[11px] text-gray-300 text-center py-12">No positions yet.</p>
+          <div className="text-center py-12 px-5">
+            <p className="text-[11px] text-gray-300 mb-3">No positions yet.</p>
+            <Link
+              href="/dashboard/upload"
+              className="text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors border border-stone-200 rounded-lg px-3 py-1.5 hover:border-gray-300"
+            >
+              Add your first position
+            </Link>
+          </div>
         )}
       </div>
     </div>
@@ -238,11 +253,11 @@ function PortfolioPanel({
 
 function TypingDots() {
   return (
-    <span className="flex gap-1 items-center h-4 py-1">
+    <span className="flex gap-1 items-center h-5 px-1">
       {[0, 150, 300].map((delay) => (
         <span
           key={delay}
-          className="w-1 h-1 bg-gray-300 rounded-full animate-bounce"
+          className="w-1.5 h-1.5 bg-stone-300 rounded-full animate-bounce"
           style={{ animationDelay: `${delay}ms` }}
         />
       ))}
@@ -327,18 +342,22 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
   const isEmpty = messages.length === 0
 
   return (
-    <div className="flex h-[calc(100vh-48px)] overflow-hidden bg-white">
+    <div className="flex h-[calc(100vh-48px)] overflow-hidden bg-canvas">
 
       {/* ── Chat area ── */}
       <div className="flex flex-col flex-1 min-w-0">
 
         {/* Portfolio toggle */}
-        <div className="flex justify-end px-6 pt-3.5">
+        <div className="flex justify-end px-6 pt-3">
           <button
             onClick={() => setPanelOpen((o) => !o)}
-            className="text-[11px] text-gray-400 hover:text-gray-900 transition-colors tracking-wide"
+            className={`text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${
+              panelOpen
+                ? 'bg-gray-900 text-white shadow-sm'
+                : 'text-gray-400 hover:text-gray-900 hover:bg-white hover:shadow-sm border border-transparent hover:border-stone-200'
+            }`}
           >
-            {panelOpen ? 'Hide portfolio' : 'My portfolio'}
+            {panelOpen ? '✕ Close' : 'My portfolio →'}
           </button>
         </div>
 
@@ -348,21 +367,32 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
 
             {/* Empty state */}
             {isEmpty && (
-              <div className="pt-16 pb-10">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-300 mb-1">Assistant</p>
-                <h1 className="text-xl font-semibold text-gray-900 mb-1 tracking-tight">What do you want to know?</h1>
-                <p className="text-sm text-gray-400 mb-8">
-                  Ask about your portfolio, prices, or recent news.
-                </p>
-                <div className="flex flex-col gap-px">
-                  {SUGGESTIONS.map((s) => (
+              <div className="pt-14 pb-10">
+                <div className="animate-fade-up delay-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-300 mb-3">
+                    Portfolio Assistant
+                  </p>
+                  <h1 className="text-2xl font-semibold text-gray-900 mb-2 tracking-tight leading-snug">
+                    What do you want<br />to know?
+                  </h1>
+                  <p className="text-sm text-gray-400 mb-8">
+                    Ask about your portfolio, prices, or recent news.
+                  </p>
+                </div>
+
+                {/* Suggestion cards — 2-column grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {SUGGESTIONS.map((s, i) => (
                     <button
-                      key={s}
-                      onClick={() => sendMessage(s)}
-                      className="group flex items-center gap-3 text-left py-2.5 text-sm text-gray-400 hover:text-gray-900 transition-colors border-b border-gray-50 last:border-0"
+                      key={s.text}
+                      onClick={() => sendMessage(s.text)}
+                      className="group text-left p-3.5 rounded-xl bg-white border border-stone-200 hover:border-stone-300 hover:shadow-card-hover transition-all duration-200 animate-fade-up"
+                      style={{ animationDelay: `${80 + i * 60}ms` }}
                     >
-                      <span className="text-gray-200 group-hover:text-gray-400 transition-colors text-xs">→</span>
-                      {s}
+                      <span className="text-base mb-2 block">{s.icon}</span>
+                      <span className="text-xs text-gray-500 group-hover:text-gray-800 transition-colors leading-relaxed">
+                        {s.text}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -371,13 +401,13 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
 
             {/* Messages */}
             {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={m.id} className={`flex animate-fade-up ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {m.role === 'user' ? (
-                  <div className="bg-gray-900 text-white text-sm leading-relaxed px-4 py-2.5 rounded-2xl rounded-br-sm max-w-[75%]">
+                  <div className="bg-gray-900 text-white text-sm leading-relaxed px-4 py-2.5 rounded-2xl rounded-br-sm max-w-[75%] shadow-sm">
                     {m.content}
                   </div>
                 ) : (
-                  <div className="max-w-[88%] min-w-0">
+                  <div className="max-w-[90%] min-w-0">
                     {m.content ? (
                       <AssistantMessage content={m.content} />
                     ) : (
@@ -393,9 +423,9 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
         </div>
 
         {/* Input bar */}
-        <div className="border-t border-gray-100 bg-white px-6 py-4">
+        <div className="px-6 pb-5 pt-3">
           <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-            <div className="flex items-end gap-3 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-gray-400 transition-colors bg-white">
+            <div className="flex items-end gap-3 bg-white border border-stone-200 rounded-2xl px-4 py-3 shadow-input focus-within:shadow-input-focus focus-within:border-stone-300 transition-all duration-200">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -409,14 +439,14 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
               <button
                 type="submit"
                 disabled={!input.trim() || loading}
-                className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0 disabled:opacity-20 hover:bg-black transition-all"
+                className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0 disabled:opacity-20 hover:bg-black transition-all duration-150 shadow-sm"
               >
                 <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
-            <p className="text-[10px] text-gray-200 text-center mt-2 tracking-wide">
+            <p className="text-[10px] text-gray-300 text-center mt-2 tracking-wide">
               Enter to send · Shift+Enter for new line
             </p>
           </form>
@@ -425,8 +455,8 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
 
       {/* ── Portfolio panel ── */}
       <div
-        className={`flex-shrink-0 border-l border-gray-100 bg-white overflow-hidden transition-all duration-200 ease-in-out ${
-          panelOpen ? 'w-64' : 'w-0'
+        className={`flex-shrink-0 border-l border-stone-200/80 bg-white overflow-hidden transition-all duration-300 ease-spring ${
+          panelOpen ? 'w-64 shadow-panel' : 'w-0'
         }`}
       >
         {panelOpen && (

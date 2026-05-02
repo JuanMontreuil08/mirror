@@ -69,6 +69,7 @@ export default function SentimentPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [placeholder, setPlaceholder] = useState('')
   const [loadingMsg, setLoadingMsg] = useState(LOADING_STEPS[0].text)
+  const [loadingStep, setLoadingStep] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const isIdle = state === 'idle'
@@ -111,8 +112,12 @@ export default function SentimentPage() {
   useEffect(() => {
     if (state !== 'analyzing') return
     setLoadingMsg(LOADING_STEPS[0].text)
-    const timers = LOADING_STEPS.slice(1).map(({ text, delay }) =>
-      setTimeout(() => setLoadingMsg(text), delay)
+    setLoadingStep(0)
+    const timers = LOADING_STEPS.slice(1).map(({ text, delay }, i) =>
+      setTimeout(() => {
+        setLoadingMsg(text)
+        setLoadingStep(i + 1)
+      }, delay)
     )
     return () => timers.forEach(clearTimeout)
   }, [state])
@@ -181,37 +186,55 @@ export default function SentimentPage() {
 
   return (
     <>
-      {/* Dark overlay — only visible in idle state */}
+      {/* Background — gradient in idle, canvas in results */}
       <div
-        className="fixed inset-0 transition-opacity duration-500 pointer-events-none"
+        className="fixed inset-0 transition-all duration-700 pointer-events-none"
         style={{
-          zIndex: 40,
-          opacity: isIdle ? 1 : 0,
-          background: 'rgba(0,0,0,0.55)',
-          backdropFilter: 'blur(2px)',
+          zIndex: 0,
+          background: isIdle
+            ? 'radial-gradient(ellipse at 60% 40%, #1a1a2e 0%, #0d0d0d 60%)'
+            : 'transparent',
         }}
       />
+
+      {/* Subtle grid overlay on idle */}
+      {isIdle && (
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            zIndex: 1,
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+            opacity: 0.6,
+          }}
+        />
+      )}
 
       {/* Search bar */}
       <div style={barStyle}>
         {isIdle && (
-          <p className="text-center text-white/60 text-sm font-medium mb-5 tracking-wide select-none">
-            X Sentiment — what traders are saying right now
-          </p>
+          <div className="text-center mb-6 animate-fade-in">
+            <p className="text-white/50 text-xs font-semibold uppercase tracking-[0.2em] mb-2 select-none">
+              X (Twitter) Sentiment
+            </p>
+            <p className="text-white/80 text-lg font-medium select-none leading-snug">
+              What are traders saying<br/>right now?
+            </p>
+          </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <div
-            className={`flex items-center gap-2 rounded-xl px-4 transition-all duration-500 ${
+            className={`flex items-center gap-2 rounded-2xl px-4 transition-all duration-500 ${
               isIdle
-                ? 'bg-white/10 border border-white/20 py-4 shadow-2xl'
-                : 'bg-white border border-gray-200 py-2.5 shadow-md'
+                ? 'bg-white/8 border border-white/15 py-4 shadow-2xl'
+                : 'bg-white border border-stone-200 py-2.5 shadow-card'
             }`}
-            style={isIdle ? { backdropFilter: 'blur(20px)' } : {}}
+            style={isIdle ? { backdropFilter: 'blur(24px)', background: 'rgba(255,255,255,0.08)' } : {}}
           >
             <span
               className={`font-bold select-none transition-all duration-500 ${
-                isIdle ? 'text-white/40 text-xl' : 'text-gray-400 text-sm'
+                isIdle ? 'text-white/35 text-xl' : 'text-gray-400 text-sm'
               }`}
             >
               $
@@ -230,7 +253,7 @@ export default function SentimentPage() {
               spellCheck={false}
               className={`flex-1 bg-transparent outline-none font-semibold tracking-widest transition-all duration-500 ${
                 isIdle
-                  ? 'text-white placeholder:text-white/25 text-xl caret-white'
+                  ? 'text-white placeholder:text-white/20 text-xl caret-white'
                   : 'text-gray-800 placeholder:text-gray-400 text-sm cursor-default'
               }`}
             />
@@ -238,7 +261,7 @@ export default function SentimentPage() {
             {isIdle && (
               <button
                 type="submit"
-                className="flex-shrink-0 text-xs text-white/40 border border-white/20 rounded-md px-2 py-1 hover:text-white/80 hover:border-white/40 transition-colors"
+                className="flex-shrink-0 text-xs text-white/35 border border-white/15 rounded-lg px-2.5 py-1.5 hover:text-white/70 hover:border-white/30 hover:bg-white/5 transition-all font-medium"
               >
                 enter ↵
               </button>
@@ -248,21 +271,35 @@ export default function SentimentPage() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-700 transition-colors"
+                className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-700 transition-colors w-5 h-5 flex items-center justify-center rounded-md hover:bg-stone-100"
               >
                 ✕
               </button>
             )}
           </div>
         </form>
+
+        {/* Example tickers hint */}
+        {isIdle && (
+          <div className="flex items-center justify-center gap-2 mt-4 animate-fade-in delay-300">
+            {EXAMPLE_TICKERS.slice(0, 5).map((t) => (
+              <button
+                key={t}
+                onClick={() => { setInputValue(t); inputRef.current?.focus() }}
+                className="text-[10px] text-white/30 hover:text-white/60 transition-colors font-mono tracking-wider px-1.5 py-0.5 rounded hover:bg-white/5"
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Analyzing — loading state centered on page */}
+      {/* Analyzing — loading state */}
       {state === 'analyzing' && (
         <div className="fixed inset-0 flex flex-col items-center justify-center gap-5" style={{ zIndex: 30 }}>
-          {/* Bouncing dots */}
-          <div className="flex gap-2">
-            {[0, 150, 300].map(delay => (
+          <div className="flex gap-1.5">
+            {[0, 120, 240].map(delay => (
               <span
                 key={delay}
                 className="h-2 w-2 rounded-full bg-gray-400 animate-bounce"
@@ -271,16 +308,19 @@ export default function SentimentPage() {
             ))}
           </div>
 
-          {/* Rotating message */}
-          <p
-            key={loadingMsg}
-            className="text-sm text-gray-500 font-medium animate-pulse"
-          >
-            {loadingMsg}
-          </p>
+          <div className="text-center">
+            <p
+              key={loadingMsg}
+              className="text-sm text-gray-600 font-medium animate-fade-in"
+            >
+              {loadingMsg}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Step {loadingStep + 1} of {LOADING_STEPS.length}
+            </p>
+          </div>
 
-          {/* Indeterminate bar */}
-          <div className="w-56 h-0.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-48 h-0.5 bg-stone-100 rounded-full overflow-hidden">
             <div
               className="h-full w-2/5 bg-gray-400 rounded-full"
               style={{ animation: 'slide-indeterminate 1.6s ease-in-out infinite' }}
@@ -292,11 +332,14 @@ export default function SentimentPage() {
       {/* Error */}
       {state === 'error' && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 30 }}>
-          <div className="text-center space-y-3 px-6">
-            <p className="text-gray-700 font-medium">{errorMsg}</p>
+          <div className="text-center space-y-4 px-6 animate-scale-in">
+            <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mx-auto">
+              <span className="text-lg">⚠️</span>
+            </div>
+            <p className="text-gray-700 font-medium text-sm">{errorMsg}</p>
             <button
               onClick={handleReset}
-              className="text-sm text-gray-400 hover:text-gray-700 underline transition-colors"
+              className="text-sm text-gray-400 hover:text-gray-700 underline underline-offset-2 transition-colors"
             >
               Try again
             </button>
@@ -306,7 +349,7 @@ export default function SentimentPage() {
 
       {/* Results */}
       {state === 'results' && data && (
-        <div className="pt-20 pb-16 px-6 max-w-4xl mx-auto space-y-6">
+        <div className="pt-20 pb-16 px-6 max-w-4xl mx-auto space-y-5 animate-fade-up">
           <SentimentHeader
             ticker={data.ticker}
             currentPrice={data.currentPrice ?? undefined}
@@ -324,7 +367,7 @@ export default function SentimentPage() {
           />
           <EvidencePosts posts={data.evidencePosts} />
           <NarrativeSummary narrative={data.aggregate.narrative} />
-          <p className="text-xs text-gray-400 border-t border-gray-100 pt-4">
+          <p className="text-xs text-gray-400 border-t border-stone-100 pt-4">
             This page summarizes public X (Twitter) discussion. It is not investment advice,
             a recommendation, or a prediction. Sentiment data should never be the sole basis
             for investment decisions.
