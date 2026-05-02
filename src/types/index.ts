@@ -38,6 +38,7 @@ export interface Position {
   quantity: number;
   avg_buy_price: number;
   total_invested: number;
+  total_fees: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -142,6 +143,8 @@ export interface ExtractedTransaction {
   transaction_date: string;
   date_confidence: number;
   broker: string | null;
+  clearance_fee: number | null;
+  fee_confidence: number;
   notes: string | null;
   warnings: string[];
 }

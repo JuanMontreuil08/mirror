@@ -39,28 +39,35 @@ export async function getStockNews(ticker: string, days = 7): Promise<NewsItem[]
     body: JSON.stringify({
       model: 'sonar',
       search_recency_filter: recency,
-      return_citations: true,
       messages: [
         {
+          role: 'system',
+          content: `You are a financial news assistant. Only return news that is specifically and directly about the requested stock ticker and company. Never include news about other companies.`,
+        },
+        {
           role: 'user',
-          content: `Find the 5 most relevant recent news about ${ticker} stock. Focus on earnings, revenue, acquisitions, partnerships, CEO changes, lawsuits, regulation, or analyst upgrades/downgrades.`,
+          content: `Find the 5 most important recent news articles specifically about $${ticker} stock. Only include articles where ${ticker} is the main subject — earnings reports, revenue results, product launches, acquisitions, CEO changes, analyst upgrades/downgrades, lawsuits, or regulatory events. Exclude any articles where ${ticker} is only mentioned in passing.`,
         },
       ],
     }),
-    next: { revalidate: 1800 },
+    cache: 'no-store',
   })
 
-  if (!res.ok) return []
+  if (!res.ok) {
+    const errText = await res.text()
+    console.error(`[get_news] Perplexity API error ${res.status} for ${ticker}:`, errText)
+    return []
+  }
 
   const json = await res.json()
-
-  // Use search_results directly — richer and more reliable than parsing LLM content
   const searchResults: Array<{
     title: string
     url: string
     date: string
     snippet: string
   }> = json.search_results ?? []
+
+  console.log(`[get_news] ${ticker}: ${searchResults.length} results. Titles:`, searchResults.map(r => r.title))
 
   if (searchResults.length > 0) {
     return searchResults.slice(0, 5).map((item, i) => ({

@@ -120,13 +120,19 @@ function PortfolioPanel({
   prices: Record<string, TickerPrice>
   totalInvested: number
 }) {
+  const [showFees, setShowFees] = useState(false)
+
+  const totalFees = positions.reduce((sum, p) => sum + Number(p.total_fees ?? 0), 0)
+  const hasFees = totalFees > 0
+
   const currentTotal = positions.reduce((sum, p) => {
     const price = prices[p.ticker]
     return sum + (price ? price.price * Number(p.quantity) : Number(p.total_invested))
   }, 0)
 
-  const totalPnl = currentTotal - totalInvested
-  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0
+  const effectiveCost = showFees ? totalInvested + totalFees : totalInvested
+  const totalPnl = currentTotal - effectiveCost
+  const totalPnlPct = effectiveCost > 0 ? (totalPnl / effectiveCost) * 100 : 0
   const isUp = totalPnl >= 0
 
   return (
@@ -135,12 +141,26 @@ function PortfolioPanel({
       <div className="px-5 pt-5 pb-4 border-b border-gray-100">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Portfolio</p>
-          <Link
-            href="/dashboard/upload"
-            className="text-[10px] text-gray-400 hover:text-gray-900 transition-colors font-medium"
-          >
-            + Add
-          </Link>
+          <div className="flex items-center gap-3">
+            {hasFees && (
+              <button
+                onClick={() => setShowFees(v => !v)}
+                className={`text-[9px] font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded transition-colors ${
+                  showFees
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-300 hover:text-gray-500'
+                }`}
+              >
+                incl. fees
+              </button>
+            )}
+            <Link
+              href="/dashboard/upload"
+              className="text-[10px] text-gray-400 hover:text-gray-900 transition-colors font-medium"
+            >
+              + Add
+            </Link>
+          </div>
         </div>
         <div className="text-[22px] font-semibold tracking-tight text-gray-900 tabular-nums leading-none">
           ${currentTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -158,8 +178,10 @@ function PortfolioPanel({
         {positions.map((p) => {
           const price = prices[p.ticker]
           const currentValue = price ? price.price * Number(p.quantity) : null
-          const pnl = currentValue !== null ? currentValue - Number(p.total_invested) : null
-          const pnlPct = pnl !== null && Number(p.total_invested) > 0 ? (pnl / Number(p.total_invested)) * 100 : null
+          const posFees = Number(p.total_fees ?? 0)
+          const costBasis = showFees ? Number(p.total_invested) + posFees : Number(p.total_invested)
+          const pnl = currentValue !== null ? currentValue - costBasis : null
+          const pnlPct = pnl !== null && costBasis > 0 ? (pnl / costBasis) * 100 : null
           const weight = currentTotal > 0 && currentValue !== null ? (currentValue / currentTotal) * 100 : 0
           const posUp = pnl === null ? null : pnl >= 0
 

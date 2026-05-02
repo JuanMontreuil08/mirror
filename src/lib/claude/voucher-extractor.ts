@@ -32,6 +32,8 @@ RESPONSE FORMAT:
       "transaction_date": "2024-11-15",
       "date_confidence": 1.0,
       "broker": "Interactive Brokers",
+      "clearance_fee": 0.15,
+      "fee_confidence": 1.0,
       "notes": null,
       "warnings": []
     }
@@ -39,6 +41,9 @@ RESPONSE FORMAT:
   "extraction_notes": "2 transactions detected in the receipt.",
   "requires_review": false
 }
+
+"clearance_fee": The broker clearance/settlement fee in USD. Typically appears between the quantity and the average price fields on the receipt. Use null if not present, not 0.
+"fee_confidence": Confidence for the clearance_fee field (0–1). Use 1.0 if explicit, 0.7 if inferred, 0 if absent.
 
 "warnings" field: List of strings describing any ambiguity found. Examples:
 - "Price per share not explicit — calculated by dividing total by quantity."

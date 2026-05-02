@@ -22,10 +22,12 @@ export default async function DashboardPage() {
     } else {
       const newQty = Number(existing.quantity) + Number(p.quantity)
       const newTotal = Number(existing.total_invested) + Number(p.total_invested)
+      const newFees = Number(existing.total_fees ?? 0) + Number(p.total_fees ?? 0)
       positionMap.set(p.ticker, {
         ...existing,
         quantity: newQty,
         total_invested: newTotal,
+        total_fees: newFees,
         avg_buy_price: newTotal / newQty,
       })
     }

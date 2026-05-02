@@ -124,17 +124,19 @@ export async function confirmVoucherTransactions(
   for (const tx of transactions) {
     const { data: existing } = await supabase
       .from('positions')
-      .select('id, quantity, avg_buy_price, total_invested')
+      .select('id, quantity, avg_buy_price, total_invested, total_fees')
       .eq('portfolio_id', portfolio.id)
       .eq('ticker', tx.ticker)
       .maybeSingle()
 
+    const txFee = tx.clearance_fee ?? 0
     let positionId: string
 
     if (existing) {
       const newQuantity = Number(existing.quantity) + tx.quantity
       const newTotalInvested = Number(existing.total_invested) + tx.total_amount
       const newAvgPrice = newTotalInvested / newQuantity
+      const newTotalFees = Number(existing.total_fees ?? 0) + txFee
 
       const { data: updated } = await supabase
         .from('positions')
@@ -142,6 +144,7 @@ export async function confirmVoucherTransactions(
           quantity: newQuantity,
           avg_buy_price: newAvgPrice,
           total_invested: newTotalInvested,
+          total_fees: newTotalFees,
           ...(tx.company_name ? { company_name: tx.company_name } : {}),
           is_active: true,
         })
@@ -163,6 +166,7 @@ export async function confirmVoucherTransactions(
           quantity: tx.quantity,
           avg_buy_price: tx.price_per_share,
           total_invested: tx.total_amount,
+          total_fees: txFee,
         })
         .select('id')
         .single()
@@ -180,6 +184,7 @@ export async function confirmVoucherTransactions(
       price_per_share: tx.price_per_share,
       total_amount: tx.total_amount,
       transaction_date: tx.transaction_date,
+      clearance_fee: txFee > 0 ? txFee : null,
       notes: tx.notes ?? null,
       source: 'voucher',
       source_file_url: fileImport?.file_url ?? null,

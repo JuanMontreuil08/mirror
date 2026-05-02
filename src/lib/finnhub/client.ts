@@ -27,7 +27,7 @@ export async function getHistoricalPrices(ticker: string, days: number = 7): Pro
   try {
     const res = await fetch(
       `${BASE_URL}/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${token}`,
-      { next: { revalidate: 3600 } }
+      { cache: 'no-store' }
     )
     if (!res.ok) return []
     const data = await res.json()
@@ -55,7 +55,7 @@ export async function getLatestPrices(tickers: string[]): Promise<Record<string,
       try {
         const res = await fetch(
           `${BASE_URL}/quote?symbol=${ticker}&token=${token}`,
-          { next: { revalidate: 3600 } } // cache 1 hour — no real-time needed
+          { cache: 'no-store' }
         )
         if (!res.ok) return null
         const data = await res.json()
