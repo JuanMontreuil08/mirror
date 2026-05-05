@@ -57,7 +57,7 @@ export function PriceSentimentChart({
   return (
     <div className="rounded-lg border border-gray-100 bg-white p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Price & Daily Reddit Sentiment</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Price & Daily News Sentiment</h3>
         <p className="text-sm text-gray-500 mt-1">
           Last 30 days. Sentiment data accumulates as the pipeline runs — may be sparse early on.
         </p>

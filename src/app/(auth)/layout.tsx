@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
             </svg>
           </div>
-          <span className="text-base font-semibold text-gray-900 tracking-tight">Foli</span>
+          <span className="text-base font-semibold text-gray-900 tracking-tight">mirror</span>
         </div>
         {children}
       </div>

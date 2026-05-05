@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { fetchXPosts } from '@/lib/x/client'
-import { sentimentScorer } from '@/lib/sentiment/scorer'
+import { fetchMassiveNews } from '@/lib/massive/client'
 import { aggregate } from '@/lib/sentiment/aggregator'
 import { generateNarrative } from '@/lib/sentiment/narrative'
 import { getLatestPrices } from '@/lib/finnhub/client'
@@ -47,14 +46,13 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   if (cached) {
-    const [{ data: evidencePosts }, currentPrices, historicalPrices, sentimentHistory] =
+    const [{ data: cachedPosts }, currentPrices, historicalPrices, sentimentHistory] =
       await Promise.all([
         supabase
           .from('x_posts_cache')
           .select('*')
           .eq('sentiment_cache_id', cached.id)
-          .eq('is_evidence', true)
-          .order('like_count', { ascending: false }),
+          .order('sentiment_score', { ascending: false }),
         getLatestPrices([ticker]),
         getHistoricalPrices(ticker, 30),
         getSentimentHistory(ticker),
@@ -64,7 +62,7 @@ export async function POST(req: NextRequest) {
       cached: true,
       ticker,
       aggregate: cached,
-      evidencePosts: evidencePosts ?? [],
+      posts: cachedPosts ?? [],
       currentPrice: currentPrices[ticker] ?? null,
       historicalPrices,
       sentimentHistory,
@@ -73,32 +71,27 @@ export async function POST(req: NextRequest) {
 
   // ── Full pipeline ────────────────────────────────────────────────────────────
 
-  // 1. Fetch X posts and prices in parallel — both are network calls with no dependency
-  const [xPosts, currentPrices, historicalPrices] = await Promise.all([
-    fetchXPosts(ticker),
+  // 1. Fetch news and prices in parallel
+  const [scored, currentPrices, historicalPrices] = await Promise.all([
+    fetchMassiveNews(ticker),
     getLatestPrices([ticker]),
     getHistoricalPrices(ticker, 30),
   ])
 
-  if (xPosts.length === 0) {
+  if (scored.length === 0) {
     return NextResponse.json(
-      { error: `No X posts found for $${ticker} in the last 7 days` },
+      { error: `No news found for $${ticker} in the last 7 days` },
       { status: 404 }
     )
   }
 
-  // 2. Score with FinBERT
-  const texts = xPosts.map(p => p.cleanedText)
-  const scores = await sentimentScorer.scoreBatch(texts)
-  const scored: ScoredPost[] = xPosts.map((post, idx) => ({ ...post, ...scores[idx] }))
-
-  // 3. Aggregate
+  // 2. Aggregate — news is pre-scored from Massive insights, no FinBERT needed
   const agg = aggregate(scored)
 
-  // 4. Generate narrative via Gemini
+  // 3. Generate narrative via Gemini
   const narrative = await generateNarrative(ticker, agg)
 
-  // 5. Write aggregate to sentiment_cache
+  // 4. Write aggregate to sentiment_cache
   const { data: cacheRow, error: cacheErr } = await supabase
     .from('sentiment_cache')
     .insert({
@@ -121,8 +114,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: cacheErr.message }, { status: 500 })
   }
 
-  // 6. Write all scored posts to x_posts_cache
-  const evidenceIds = new Set(agg.evidencePosts.map(p => p.id))
+  // 5. Write all scored posts to cache
   const postRows = scored.map(p => ({
     sentiment_cache_id: cacheRow.id,
     ticker,
@@ -138,7 +130,7 @@ export async function POST(req: NextRequest) {
     posted_at: p.createdAt.toISOString(),
     sentiment_score: p.score,
     sentiment_label: p.label,
-    is_evidence: evidenceIds.has(p.id),
+    is_evidence: false,
   }))
 
   const { error: postsErr } = await supabase.from('x_posts_cache').insert(postRows)
@@ -146,12 +138,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: postsErr.message }, { status: 500 })
   }
 
-  // 7. Fetch updated sentiment history (now includes this new row)
+  // 6. Fetch updated sentiment history
   const sentimentHistory = await getSentimentHistory(ticker)
 
-  const evidencePosts = agg.evidencePosts.map(p => ({
+  const mapPost = (p: ScoredPost) => ({
     id: p.id,
-    tweet_id: p.id,
     ticker,
     text: p.cleanedText,
     author_username: p.authorUsername,
@@ -159,11 +150,9 @@ export async function POST(req: NextRequest) {
     permalink: p.permalink,
     like_count: p.likeCount,
     reply_count: p.replyCount,
-    retweet_count: p.retweetCount,
     posted_at: p.createdAt.toISOString(),
     sentiment_label: p.label,
-    is_evidence: true,
-  }))
+  })
 
   return NextResponse.json({
     cached: false,
@@ -182,7 +171,7 @@ export async function POST(req: NextRequest) {
       polarization_label: agg.polarizationLabel,
       narrative,
     },
-    evidencePosts,
+    posts: scored.map(mapPost),
     currentPrice: currentPrices[ticker] ?? null,
     historicalPrices,
     sentimentHistory,

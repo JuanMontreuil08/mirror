@@ -11,6 +11,16 @@ import type { DailyCandle } from '@/lib/alpaca/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type PostItem = {
+  id: string
+  text: string
+  author_username: string | null
+  permalink: string
+  like_count: number
+  posted_at: string
+  sentiment_label: string
+}
+
 interface AnalyzeResponse {
   cached: boolean
   ticker: string
@@ -28,19 +38,7 @@ interface AnalyzeResponse {
     polarization_label: string
     narrative: string
   }
-  evidencePosts: {
-    id: string
-    tweet_id: string
-    text: string
-    author_username: string | null
-    author_name: string | null
-    permalink: string
-    like_count: number
-    reply_count: number
-    retweet_count: number
-    posted_at: string
-    sentiment_label: string
-  }[]
+  posts: PostItem[]
   currentPrice: TickerPrice | null
   historicalPrices: DailyCandle[]
   sentimentHistory: { computed_at: string; sentiment_score: number; post_count: number }[]
@@ -53,10 +51,10 @@ type State = 'idle' | 'analyzing' | 'results' | 'error'
 const EXAMPLE_TICKERS = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'GOOGL', 'AMZN', 'META']
 
 const LOADING_STEPS = [
-  { text: 'Fetching X posts...', delay: 0 },
-  { text: 'Scoring sentiment with FinBERT...', delay: 5000 },
-  { text: 'Generating narrative...', delay: 22000 },
-  { text: 'Almost there...', delay: 38000 },
+  { text: 'Fetching news articles...', delay: 0 },
+  { text: 'Analyzing sentiment...', delay: 3000 },
+  { text: 'Generating narrative...', delay: 8000 },
+  { text: 'Almost there...', delay: 15000 },
 ]
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -215,7 +213,7 @@ export default function SentimentPage() {
         {isIdle && (
           <div className="text-center mb-6 animate-fade-in">
             <p className="text-white/50 text-xs font-semibold uppercase tracking-[0.2em] mb-2 select-none">
-              X (Twitter) Sentiment
+              News Sentiment
             </p>
             <p className="text-white/80 text-lg font-medium select-none leading-snug">
               What are traders saying<br/>right now?
@@ -365,10 +363,10 @@ export default function SentimentPage() {
             negativeCount={data.aggregate.negative_count}
             polarizationLabel={data.aggregate.polarization_label}
           />
-          <EvidencePosts posts={data.evidencePosts} />
+          <EvidencePosts posts={data.posts} />
           <NarrativeSummary narrative={data.aggregate.narrative} />
           <p className="text-xs text-gray-400 border-t border-stone-100 pt-4">
-            This page summarizes public X (Twitter) discussion. It is not investment advice,
+            This page summarizes recent financial news sentiment. It is not investment advice,
             a recommendation, or a prediction. Sentiment data should never be the sole basis
             for investment decisions.
           </p>
