@@ -7,13 +7,17 @@ type SentimentCacheRow = {
   computed_at: string
 }
 
-const LABEL_DISPLAY: Record<string, { text: string; color: string; dot: string }> = {
-  positive:        { text: 'Positive',        color: 'text-green-700',  dot: 'bg-green-500' },
-  mostly_positive: { text: 'Mostly Positive', color: 'text-green-600',  dot: 'bg-green-400' },
-  mixed:           { text: 'Mixed',           color: 'text-gray-600',   dot: 'bg-gray-400' },
-  mostly_negative: { text: 'Mostly Negative', color: 'text-orange-600', dot: 'bg-orange-400' },
-  negative:        { text: 'Negative',        color: 'text-red-700',    dot: 'bg-red-500' },
-  low_activity:    { text: 'Low Activity',    color: 'text-gray-400',   dot: 'bg-gray-300' },
+// Map sentiment labels to Mirror design tokens (gain/loss/warn colors only)
+function getSentimentStyle(label: string): { text: string; cssColor: string; dotColor: string } {
+  switch (label) {
+    case 'positive':        return { text: 'Positive',        cssColor: 'var(--color-gain)',       dotColor: 'var(--color-gain)' }
+    case 'mostly_positive': return { text: 'Mostly Positive', cssColor: 'var(--color-gain)',       dotColor: 'var(--color-gain)' }
+    case 'mostly_negative': return { text: 'Mostly Negative', cssColor: 'var(--color-loss)',       dotColor: 'var(--color-loss)' }
+    case 'negative':        return { text: 'Negative',        cssColor: 'var(--color-loss)',       dotColor: 'var(--color-loss)' }
+    case 'mixed':           return { text: 'Mixed',           cssColor: 'var(--color-text-muted)', dotColor: 'var(--color-text-faint)' }
+    case 'low_activity':    return { text: 'Low Activity',    cssColor: 'var(--color-text-faint)', dotColor: 'var(--color-text-faint)' }
+    default:                return { text: label,             cssColor: 'var(--color-text-muted)', dotColor: 'var(--color-text-faint)' }
+  }
 }
 
 function relativeTime(iso: string): string {
@@ -34,36 +38,64 @@ export function SentimentHeader({
   currentPrice: TickerPrice | undefined
   aggregate: SentimentCacheRow
 }) {
-  const display = LABEL_DISPLAY[aggregate.sentiment_label] ?? LABEL_DISPLAY.mixed
+  const style = getSentimentStyle(aggregate.sentiment_label)
   const priceChange = currentPrice?.changePct ?? 0
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-white p-6">
+    <div className="glass-card rounded-[20px] p-6">
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">{ticker}</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <h2
+            className="font-ui font-light text-[36px] leading-none"
+            style={{ color: 'var(--color-text)' }}
+          >
+            {ticker}
+          </h2>
+          <p
+            className="font-data text-[10px] uppercase tracking-[0.1em] mt-1"
+            style={{ color: 'var(--color-text-faint)' }}
+          >
             Updated {relativeTime(aggregate.computed_at)}
           </p>
         </div>
         {currentPrice && (
           <div className="text-right">
-            <p className="text-2xl font-semibold text-gray-900">
+            <p
+              className="font-ui font-light text-[28px] leading-none tabular-nums"
+              style={{ color: 'var(--color-text)' }}
+            >
               ${currentPrice.price.toFixed(2)}
             </p>
-            <p className={`text-sm font-medium ${priceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <p
+              className="font-data text-sm tabular-nums mt-1"
+              style={{ color: priceChange >= 0 ? 'var(--color-gain)' : 'var(--color-loss)' }}
+            >
               {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)}% today
             </p>
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-        <span className={`inline-block h-3 w-3 rounded-full flex-shrink-0 ${display.dot}`} />
+      <div
+        className="flex items-center gap-3 pt-4"
+        style={{ borderTop: '1px solid var(--color-border-sub)' }}
+      >
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: style.dotColor }}
+        />
         <div>
-          <p className={`text-lg font-semibold ${display.color}`}>{display.text}</p>
-          <p className="text-sm text-gray-500">
-            {`Based on ${aggregate.post_count} news articles in the last 7 days.`}
+          <p
+            className="font-ui font-light text-[22px] leading-none"
+            style={{ color: style.cssColor }}
+          >
+            {style.text}
+          </p>
+          <p
+            className="font-ui text-sm mt-0.5"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
+            Based on {aggregate.post_count} news articles in the last 7 days.
           </p>
         </div>
       </div>

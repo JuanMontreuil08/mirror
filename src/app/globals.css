@@ -2,14 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Font rendering ─────────────────────────────────────────────────────────── */
+/* ── Design Tokens — Mirror (Dark-first) ──────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --color-bg:            #09090F;
+  --color-surface:       rgba(255, 255, 255, 0.06);
+  --color-surface-solid: rgba(255, 255, 255, 0.07);
+  --color-border:        rgba(255, 255, 255, 0.10);
+  --color-border-sub:    rgba(255, 255, 255, 0.07);
+
+  /* Text */
+  --color-text:          #EEEEF2;
+  --color-text-muted:    #8888A0;
+  --color-text-faint:    #44445A;
+
+  /* Interactive */
+  --color-cta:           #EEEEF2;
+  --color-cta-hover:     #FFFFFF;
+
+  /* Financial — only colored elements in the UI */
+  --color-gain:          #34D399;
+  --color-gain-bg:       rgba(52, 211, 153, 0.12);
+  --color-loss:          #F87171;
+  --color-loss-bg:       rgba(248, 113, 113, 0.12);
+  --color-warn:          #FBBF24;
+  --color-warn-bg:       rgba(251, 191, 36, 0.10);
+
+  /* Border radius — hierarchical */
+  --radius-sm:   6px;
+  --radius-md:   12px;
+  --radius-lg:   20px;
+  --radius-xl:   28px;
+  --radius-full: 9999px;
+
+  /* Easing */
+  --ease-out:    cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-in:     cubic-bezier(0.4, 0.0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+
+  /* Fonts — system SF Pro stack */
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --font-prose:   -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-ui:      -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-mono:    'DM Mono', 'Menlo', monospace;
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────────── */
 *, *::before, *::after {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Keyframes ──────────────────────────────────────────────────────────────── */
+html, body {
+  background-color: var(--color-bg);
+}
 
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+}
+
+/* ── Glass recipe ─────────────────────────────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.40),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Stronger glass for cards/panels */
+.glass-card {
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* ── Typography utilities ─────────────────────────────────────────────────────── */
+.font-display { font-family: var(--font-display); }
+.font-prose   { font-family: var(--font-prose); }
+.font-ui      { font-family: var(--font-ui); }
+.font-data    { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ── Nav link hover ──────────────────────────────────────────────────────────── */
+.mirror-nav-link {
+  color: var(--color-text-muted);
+}
+.mirror-nav-link:hover {
+  color: var(--color-text);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ── P&L hover reveal ─────────────────────────────────────────────────────────── */
+.pos-pnl            { color: var(--color-text-muted); transition: color 150ms ease-in-out; }
+.position-card:hover .pos-pnl-gain { color: var(--color-gain); }
+.position-card:hover .pos-pnl-loss { color: var(--color-loss); }
+
+/* ── Keyframes ───────────────────────────────────────────────────────────────── */
 @keyframes slide-indeterminate {
   0%   { transform: translateX(-100%); }
   50%  { transform: translateX(150%); }
@@ -22,7 +118,7 @@
 }
 
 @keyframes fadeUp {
-  0%   { opacity: 0; transform: translateY(12px); }
+  0%   { opacity: 0; transform: translateY(8px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
@@ -32,48 +128,40 @@
 }
 
 @keyframes scaleIn {
-  0%   { opacity: 0; transform: scale(0.96); }
+  0%   { opacity: 0; transform: scale(0.97); }
   100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes slideInRight {
-  0%   { opacity: 0; transform: translateX(16px); }
-  100% { opacity: 1; transform: translateX(0); }
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(0); }
 }
 
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(30px, -20px) scale(1.05); }
+  66%       { transform: translate(-20px, 15px) scale(0.95); }
 }
 
-/* ── Animation utilities ────────────────────────────────────────────────────── */
+/* ── Animation utilities ─────────────────────────────────────────────────────── */
+.animate-fade-up        { animation: fadeUp 250ms var(--ease-out) both; }
+.animate-fade-in        { animation: fadeIn 200ms var(--ease-out) both; }
+.animate-scale-in       { animation: scaleIn 300ms var(--ease-out) both; }
+.animate-slide-in-right { animation: slideInRight 280ms var(--ease-out) both; }
+.animate-ticker         { animation: ticker 28s linear infinite; }
+.animate-ticker:hover   { animation-play-state: paused; }
+.animate-blob           { animation: blob-drift 12s ease-in-out infinite; }
 
-.animate-fade-up {
-  animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-scale-in,
+  .animate-slide-in-right,
+  .animate-blob {
+    animation: fadeIn 200ms ease both;
+  }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.35s ease-out both;
-}
-
-.animate-scale-in {
-  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-slide-in-right {
-  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.animate-ticker {
-  animation: ticker 28s linear infinite;
-}
-
-.animate-ticker:hover {
-  animation-play-state: paused;
-}
-
-/* ── Stagger delay helpers ──────────────────────────────────────────────────── */
-
+/* ── Stagger delay helpers ───────────────────────────────────────────────────── */
 .delay-0   { animation-delay: 0ms; }
 .delay-50  { animation-delay: 50ms; }
 .delay-100 { animation-delay: 100ms; }
@@ -85,26 +173,14 @@
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
 
-/* ── Custom scrollbar ───────────────────────────────────────────────────────── */
+/* ── Custom scrollbar ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #D8D8D4;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #A8A8A4;
-}
-
-/* ── Dot grid background (used in upload page) ──────────────────────────────── */
-
+/* ── Dot grid (upload page) ──────────────────────────────────────────────────── */
 .bg-dot-grid {
-  background-image: radial-gradient(circle, #C8C8C4 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }

@@ -104,13 +104,13 @@ export default function UploadPage() {
   // ── Loading states ──────────────────────────────────────────────────────────
   if (step === 'processing' || step === 'confirming') {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-48px)] bg-canvas">
-        <div className="text-center animate-fade-in">
-          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-xs font-medium text-gray-500">
+      <div className="flex items-center justify-center h-[calc(100vh-48px)] animate-fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: 'var(--color-cta)', borderTopColor: 'transparent' }} />
+          <p className="font-ui text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
             {step === 'processing' ? 'Analyzing your file…' : 'Saving transactions…'}
           </p>
-          <p className="text-xs text-gray-300 mt-1">This may take a few seconds</p>
+          <p className="font-ui text-xs mt-1" style={{ color: 'var(--color-text-faint)' }}>This may take a few seconds</p>
         </div>
       </div>
     )
@@ -119,41 +119,42 @@ export default function UploadPage() {
   // ── Review step ─────────────────────────────────────────────────────────────
   if (step === 'review' && extraction) {
     return (
-      <div className={`bg-canvas min-h-[calc(100vh-48px)] transition-all duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`min-h-[calc(100vh-48px)] transition-all duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: 'var(--color-bg)' }}>
         <div className="px-8 py-8 max-w-4xl mx-auto animate-fade-up">
           <div className="flex items-center justify-between mb-6">
             <div>
               <button
                 onClick={resetToUpload}
-                className="text-xs text-gray-400 hover:text-gray-900 transition-colors mb-2 block flex items-center gap-1"
+                className="font-ui text-xs mb-2 block transition-colors"
+                style={{ color: 'var(--color-text-faint)' }}
               >
                 ← Back
               </button>
-              <h1 className="text-base font-semibold text-gray-900 tracking-tight">Review extracted data</h1>
+              <h1 className="font-ui text-base font-medium tracking-tight" style={{ color: 'var(--color-text)' }}>Review extracted data</h1>
               {extraction.extraction_notes && (
-                <p className="text-xs text-gray-400 mt-0.5">{extraction.extraction_notes}</p>
+                <p className="font-ui text-xs mt-0.5" style={{ color: 'var(--color-text-faint)' }}>{extraction.extraction_notes}</p>
               )}
             </div>
           </div>
 
           {extraction.requires_review && (
-            <div className="mb-5 text-xs text-amber-700 border border-amber-200 rounded-xl px-4 py-3 bg-amber-50 flex items-start gap-2">
-              <span className="mt-0.5 flex-shrink-0">⚠️</span>
+            <div className="mb-5 font-ui text-xs rounded-[12px] px-4 py-3 flex items-start gap-2" style={{ color: 'var(--color-warn)', backgroundColor: 'var(--color-warn-bg)', border: '1px solid var(--color-warn-bg)' }}>
+              <span className="mt-0.5 flex-shrink-0">⚠</span>
               <span>Some fields have low confidence — please review before confirming.</span>
             </div>
           )}
 
           {error && (
-            <div className="mb-5 text-xs text-red-500 border border-red-100 rounded-xl px-4 py-3 bg-red-50">{error}</div>
+            <div className="mb-5 font-ui text-xs rounded-[12px] px-4 py-3" style={{ color: 'var(--color-loss)', backgroundColor: 'var(--color-loss-bg)' }}>{error}</div>
           )}
 
           {transactions.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-12">No transactions found.</p>
+            <p className="font-ui text-sm text-center py-12" style={{ color: 'var(--color-text-muted)' }}>No transactions found.</p>
           ) : (
-            <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden mb-6 shadow-card">
+            <div className="glass-card rounded-[20px] overflow-hidden mb-6">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-stone-100">
+                  <tr style={{ borderBottom: '1px solid var(--color-border-sub)' }}>
                     {[
                       { label: 'Stock', align: 'left' },
                       { label: 'Type', align: 'left' },
@@ -165,7 +166,8 @@ export default function UploadPage() {
                     ].map((h) => (
                       <th
                         key={h.label}
-                        className={`text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-4 py-3 text-${h.align} bg-stone-50/50`}
+                        className={`font-data text-[10px] uppercase tracking-[0.1em] px-4 py-3 text-${h.align}`}
+                        style={{ color: 'var(--color-text-faint)', backgroundColor: 'rgba(0,0,0,0.015)' }}
                       >
                         {h.label}
                       </th>
@@ -174,54 +176,52 @@ export default function UploadPage() {
                 </thead>
                 <tbody>
                   {transactions.map((tx, index) => (
-                    <tr key={index} className="border-b border-stone-50 last:border-0 align-middle hover:bg-stone-50/50 transition-colors">
+                    <tr key={index} className="align-middle transition-colors" style={{ borderBottom: '1px solid var(--color-border-sub)' }}>
                       <td className="px-4 py-3">
                         <input
-                          className="w-20 text-sm font-semibold text-gray-900 bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 hover:border-stone-200 focus:border-gray-400 focus:outline-none focus:bg-white uppercase transition-all"
+                          className="w-20 font-data text-sm bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 uppercase outline-none transition-all"
+                          style={{ color: 'var(--color-text)' }}
                           value={tx.ticker}
                           onChange={(e) => updateTransaction(index, 'ticker', e.target.value.toUpperCase())}
                         />
                         {tx.warnings.length > 0 && (
-                          <div className="text-[10px] text-amber-500 px-1.5 mt-0.5">{tx.warnings[0]}</div>
+                          <div className="font-data text-[10px] px-1.5 mt-0.5" style={{ color: 'var(--color-warn)' }}>{tx.warnings[0]}</div>
                         )}
                       </td>
                       <td className="px-4 py-3">
                         <select
                           value={tx.transaction_type}
                           onChange={(e) => updateTransaction(index, 'transaction_type', e.target.value)}
-                          className={`text-xs rounded-lg px-2.5 py-1 border-0 focus:outline-none cursor-pointer font-medium ${
-                            tx.transaction_type === 'buy'
-                              ? 'text-emerald-700 bg-emerald-50'
-                              : 'text-red-600 bg-red-50'
-                          }`}
+                          className="font-ui text-xs rounded-[6px] px-2.5 py-1 border-0 outline-none cursor-pointer font-medium"
+                          style={{
+                            color: tx.transaction_type === 'buy' ? 'var(--color-gain)' : 'var(--color-loss)',
+                            backgroundColor: tx.transaction_type === 'buy' ? 'var(--color-gain-bg)' : 'var(--color-loss-bg)',
+                          }}
                         >
                           <option value="buy">buy</option>
                           <option value="sell">sell</option>
                         </select>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input type="number" step="any" className="w-24 text-sm text-gray-600 text-right bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 hover:border-stone-200 focus:border-gray-400 focus:outline-none focus:bg-white transition-all" value={tx.quantity} onChange={(e) => updateTransaction(index, 'quantity', e.target.value)} />
+                        <input type="number" step="any" className="w-24 font-data text-sm text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text-muted)' }} value={tx.quantity} onChange={(e) => updateTransaction(index, 'quantity', e.target.value)} />
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input type="number" step="any" className="w-24 text-sm text-gray-600 text-right bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 hover:border-stone-200 focus:border-gray-400 focus:outline-none focus:bg-white transition-all" value={tx.price_per_share} onChange={(e) => updateTransaction(index, 'price_per_share', e.target.value)} />
+                        <input type="number" step="any" className="w-24 font-data text-sm text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text-muted)' }} value={tx.price_per_share} onChange={(e) => updateTransaction(index, 'price_per_share', e.target.value)} />
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input type="number" step="any" className="w-24 text-sm font-semibold text-gray-900 text-right bg-transparent border border-transparent rounded-lg px-1.5 py-0.5 hover:border-stone-200 focus:border-gray-400 focus:outline-none focus:bg-white transition-all" value={tx.total_amount} onChange={(e) => updateTransaction(index, 'total_amount', e.target.value)} />
+                        <input type="number" step="any" className="w-24 font-data text-sm font-medium text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text)' }} value={tx.total_amount} onChange={(e) => updateTransaction(index, 'total_amount', e.target.value)} />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <input
                           type="date"
-                          className={`text-sm text-right bg-transparent border rounded-lg px-1.5 py-0.5 focus:outline-none focus:border-gray-400 transition-all ${
-                            !tx.transaction_date
-                              ? 'border-amber-200 bg-amber-50 text-amber-700'
-                              : 'border-transparent hover:border-stone-200 text-gray-600'
-                          }`}
+                          className="font-data text-sm text-right bg-transparent border rounded-[6px] px-1.5 py-0.5 outline-none transition-all"
+                          style={!tx.transaction_date ? { borderColor: 'var(--color-warn)', color: 'var(--color-warn)', backgroundColor: 'var(--color-warn-bg)' } : { borderColor: 'transparent', color: 'var(--color-text-muted)' }}
                           value={tx.transaction_date ?? ''}
                           onChange={(e) => updateTransaction(index, 'transaction_date', e.target.value)}
                         />
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => removeTransaction(index)} className="text-[10px] text-gray-300 hover:text-red-400 transition-colors font-medium">Remove</button>
+                        <button onClick={() => removeTransaction(index)} className="font-ui text-[10px] transition-colors" style={{ color: 'var(--color-text-faint)' }}>Remove</button>
                       </td>
                     </tr>
                   ))}
@@ -231,13 +231,14 @@ export default function UploadPage() {
           )}
 
           <div className="flex items-center gap-4">
-            <button onClick={resetToUpload} className="text-sm text-gray-400 hover:text-gray-900 transition-colors">
+            <button onClick={resetToUpload} className="font-ui text-sm transition-colors" style={{ color: 'var(--color-text-faint)' }}>
               Upload another
             </button>
             {transactions.length > 0 && (
               <button
                 onClick={handleConfirm}
-                className="text-sm font-medium text-white bg-gray-900 px-5 py-2.5 rounded-xl hover:bg-black transition-colors shadow-sm"
+                className="font-ui text-sm font-medium px-5 py-2.5 rounded-[12px] transition-colors"
+                style={{ backgroundColor: 'var(--color-cta)', color: '#FFFFFF' }}
               >
                 Confirm {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
               </button>
@@ -251,28 +252,42 @@ export default function UploadPage() {
   // ── Upload step ─────────────────────────────────────────────────────────────
   return (
     <div
-      className={`flex h-[calc(100vh-48px)] bg-canvas transition-all duration-500 ${
-        mounted ? 'opacity-100' : 'opacity-0'
-      }`}
+      className={`flex h-[calc(100vh-48px)] transition-all duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}
+      style={{ backgroundColor: 'var(--color-bg)' }}
     >
       {/* Left panel — instructions */}
-      <div className="w-2/5 relative flex flex-col justify-center px-12 py-16 overflow-hidden border-r border-stone-200/70 bg-white">
+      <div
+        className="w-2/5 relative flex flex-col justify-center px-12 py-16 overflow-hidden"
+        style={{
+          borderRight: '1px solid rgba(255,255,255,0.07)',
+          backgroundColor: 'rgba(255,255,255,0.04)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+        }}
+      >
         {/* Dot grid background */}
         <div className="absolute inset-0 bg-dot-grid opacity-[0.35] pointer-events-none" />
 
         <div className="relative z-10 animate-fade-up">
-          <Link href="/dashboard" className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition-colors mb-10">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1 font-ui text-xs mb-10 transition-colors"
+            style={{ color: 'var(--color-text-faint)' }}
+          >
             ← Back
           </Link>
 
-          <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center mb-5 shadow-sm">
+          <div
+            className="w-10 h-10 rounded-[12px] flex items-center justify-center mb-5"
+            style={{ backgroundColor: 'var(--color-cta)' }}
+          >
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
           </div>
 
-          <h1 className="text-xl font-semibold text-gray-900 mb-3 tracking-tight">Add position</h1>
-          <p className="text-sm text-gray-500 leading-relaxed mb-10">
+          <h1 className="font-ui text-xl font-medium mb-3 tracking-tight" style={{ color: 'var(--color-text)' }}>Add position</h1>
+          <p className="font-ui text-sm leading-relaxed mb-10" style={{ color: 'var(--color-text-muted)' }}>
             Upload a photo or PDF of your trade confirmation. We&apos;ll extract the details automatically — you can review and edit before saving.
           </p>
 
@@ -284,31 +299,38 @@ export default function UploadPage() {
             ].map((item) => (
               <div key={item.text} className="flex items-center gap-2.5">
                 <span className="text-sm">{item.icon}</span>
-                <span className="text-xs text-gray-500">{item.text}</span>
+                <span className="font-ui text-xs" style={{ color: 'var(--color-text-muted)' }}>{item.text}</span>
               </div>
             ))}
           </div>
 
-          <p className="text-xs text-gray-300 mt-8 font-mono">Max 10MB · JPG, PNG, WebP, PDF</p>
+          <p className="font-data text-xs mt-8" style={{ color: 'var(--color-text-faint)' }}>Max 10MB · JPG, PNG, WebP, PDF</p>
         </div>
       </div>
 
       {/* Right panel — drop zone */}
       <div className="w-3/5 flex flex-col justify-center px-16 py-16">
         {error && (
-          <div className="mb-6 text-xs text-red-500 border border-red-100 rounded-xl px-4 py-3 bg-red-50 animate-fade-in">
+          <div className="mb-6 font-ui text-xs rounded-[12px] px-4 py-3 animate-fade-in" style={{ color: 'var(--color-loss)', backgroundColor: 'var(--color-loss-bg)' }}>
             {error}
           </div>
         )}
 
         <div
-          className={`border-2 border-dashed rounded-2xl p-20 text-center cursor-pointer transition-all duration-200 animate-fade-up delay-100 ${
-            dragOver
-              ? 'border-gray-900 bg-white shadow-card-hover scale-[1.01]'
+          className="border-dashed rounded-[20px] p-20 text-center cursor-pointer transition-all duration-200 animate-fade-up delay-100"
+          style={{
+            border: dragOver
+              ? `2px dashed var(--color-cta)`
               : selectedFile
-              ? 'border-emerald-300 bg-emerald-50/30 hover:border-emerald-400'
-              : 'border-stone-200 bg-white hover:border-stone-400 hover:shadow-card'
-          }`}
+              ? `2px dashed var(--color-gain)`
+              : `2px dashed var(--color-border-sub)`,
+            backgroundColor: dragOver
+              ? 'rgba(255,255,255,0.08)'
+              : selectedFile
+              ? 'var(--color-gain-bg)'
+              : 'rgba(255,255,255,0.03)',
+            transform: dragOver ? 'scale(1.01)' : 'scale(1)',
+          }}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
@@ -324,26 +346,26 @@ export default function UploadPage() {
 
           {selectedFile ? (
             <div className="animate-scale-in">
-              <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm">
+              <div className="w-10 h-10 rounded-[12px] flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'var(--color-gain)' }}>
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-sm font-semibold text-gray-900 mb-0.5">{selectedFile.name}</p>
-              <p className="text-xs text-gray-400">{(selectedFile.size / 1024).toFixed(0)} KB · Ready to analyze</p>
+              <p className="font-ui text-sm font-medium mb-0.5" style={{ color: 'var(--color-text)' }}>{selectedFile.name}</p>
+              <p className="font-data text-xs" style={{ color: 'var(--color-text-muted)' }}>{(selectedFile.size / 1024).toFixed(0)} KB · Ready to analyze</p>
             </div>
           ) : (
             <div>
-              <div className="w-10 h-10 bg-stone-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <svg className="w-5 h-5 text-stone-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-10 h-10 rounded-[12px] flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'var(--color-bg)' }}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--color-text-faint)' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                 </svg>
               </div>
-              <p className="text-sm text-gray-600 mb-1">
+              <p className="font-ui text-sm mb-1" style={{ color: 'var(--color-text-muted)' }}>
                 Drop your file here or{' '}
-                <span className="text-gray-900 font-medium underline underline-offset-2">browse</span>
+                <span className="font-medium underline underline-offset-2" style={{ color: 'var(--color-text)' }}>browse</span>
               </p>
-              <p className="text-xs text-gray-400">Supports JPG, PNG, WebP, PDF</p>
+              <p className="font-data text-xs" style={{ color: 'var(--color-text-faint)' }}>Supports JPG, PNG, WebP, PDF</p>
             </div>
           )}
         </div>
@@ -352,13 +374,15 @@ export default function UploadPage() {
           <div className="flex items-center gap-4 mt-5 animate-fade-up">
             <button
               onClick={() => { setSelectedFile(null); setError(null) }}
-              className="text-sm text-gray-400 hover:text-gray-900 transition-colors"
+              className="font-ui text-sm transition-colors"
+              style={{ color: 'var(--color-text-faint)' }}
             >
               Clear
             </button>
             <button
               onClick={handleAnalyze}
-              className="text-sm font-medium text-white bg-gray-900 px-5 py-2.5 rounded-xl hover:bg-black transition-colors shadow-sm"
+              className="font-ui text-sm font-medium px-5 py-2.5 rounded-[12px] transition-colors"
+              style={{ backgroundColor: 'var(--color-cta)', color: '#FFFFFF' }}
             >
               Analyze with AI →
             </button>

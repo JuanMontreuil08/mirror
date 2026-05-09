@@ -9,25 +9,45 @@ export default async function LoginPage({ searchParams }: Props) {
   const params = await searchParams
 
   return (
-    <div className="bg-white rounded-2xl shadow-card border border-stone-200/80 p-8">
-      <h1 className="text-xl font-semibold text-gray-900 mb-0.5 tracking-tight">Welcome back</h1>
-      <p className="text-sm text-gray-400 mb-7">Sign in to your portfolio</p>
+    <div className="glass-card rounded-[28px] p-8">
+      <h1
+        className="text-xl font-ui font-medium mb-1 tracking-tight"
+        style={{ color: 'var(--color-text)' }}
+      >
+        Welcome back
+      </h1>
+      <p
+        className="font-ui text-sm mb-7"
+        style={{ color: 'var(--color-text-muted)' }}
+      >
+        Sign in to your portfolio
+      </p>
 
       {params.error && (
-        <div className="mb-5 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+        <div
+          className="mb-5 p-3 rounded-[12px] text-sm"
+          style={{ backgroundColor: 'var(--color-loss-bg)', color: 'var(--color-loss)' }}
+        >
           {params.error}
         </div>
       )}
 
       {params.info && (
-        <div className="mb-5 p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-600">
+        <div
+          className="mb-5 p-3 rounded-[12px] text-sm"
+          style={{ backgroundColor: 'var(--color-gain-bg)', color: 'var(--color-gain)' }}
+        >
           {params.info}
         </div>
       )}
 
       <form action={signIn} className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-xs font-medium text-gray-600 mb-1.5 tracking-wide">
+          <label
+            htmlFor="email"
+            className="block font-data text-[10px] uppercase tracking-[0.1em] mb-1.5"
+            style={{ color: 'var(--color-text-faint)' }}
+          >
             Email
           </label>
           <input
@@ -36,12 +56,23 @@ export default async function LoginPage({ searchParams }: Props) {
             type="email"
             required
             autoComplete="email"
-            className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:bg-white focus:ring-0 transition-all"
+            placeholder="you@example.com"
+            className="w-full px-4 py-2.5 text-sm rounded-[12px] outline-none transition-all placeholder:text-[var(--color-text-faint)]"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              color: 'var(--color-text)',
+              fontFamily: 'var(--font-ui)',
+            }}
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-xs font-medium text-gray-600 mb-1.5 tracking-wide">
+          <label
+            htmlFor="password"
+            className="block font-data text-[10px] uppercase tracking-[0.1em] mb-1.5"
+            style={{ color: 'var(--color-text-faint)' }}
+          >
             Password
           </label>
           <input
@@ -50,21 +81,39 @@ export default async function LoginPage({ searchParams }: Props) {
             type="password"
             required
             autoComplete="current-password"
-            className="w-full px-3.5 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 focus:bg-white focus:ring-0 transition-all"
+            className="w-full px-4 py-2.5 text-sm rounded-[12px] outline-none transition-all"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              color: 'var(--color-text)',
+              fontFamily: 'var(--font-ui)',
+            }}
           />
         </div>
 
         <button
           type="submit"
-          className="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-black transition-colors mt-1 shadow-sm"
+          className="w-full py-2.5 rounded-[12px] text-sm font-medium mt-1 transition-colors"
+          style={{
+            backgroundColor: 'rgba(255,255,255,0.90)',
+            color: '#09090F',
+            fontFamily: 'var(--font-ui)',
+          }}
         >
           Sign in
         </button>
       </form>
 
-      <p className="mt-6 text-center text-xs text-gray-400">
+      <p
+        className="mt-6 text-center text-xs"
+        style={{ color: 'var(--color-text-faint)' }}
+      >
         Don&apos;t have an account?{' '}
-        <Link href="/register" className="text-gray-700 font-medium hover:text-gray-900 transition-colors">
+        <Link
+          href="/register"
+          className="font-medium transition-colors hover:underline"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
           Sign up
         </Link>
       </p>

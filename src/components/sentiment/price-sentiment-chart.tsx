@@ -8,7 +8,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  Legend,
 } from 'recharts'
 import type { DailyCandle } from '@/lib/alpaca/client'
 
@@ -35,7 +34,6 @@ export function PriceSentimentChart({
   historicalPrices: DailyCandle[]
   sentimentHistory: SentimentPoint[]
 }) {
-  // Group sentiment by date — keep the last entry per day (most recent refresh)
   const sentimentByDate = new Map<string, number>()
   for (const s of sentimentHistory) {
     sentimentByDate.set(toYMD(s.computed_at), s.sentiment_score)
@@ -55,28 +53,36 @@ export function PriceSentimentChart({
   }
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-white p-6">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Price & Daily News Sentiment</h3>
-        <p className="text-sm text-gray-500 mt-1">
+    <div className="glass-card rounded-[20px] p-6">
+      <div className="mb-5">
+        <h3
+          className="font-ui text-base font-medium"
+          style={{ color: 'var(--color-text)' }}
+        >
+          Price & Daily News Sentiment
+        </h3>
+        <p
+          className="font-ui text-sm mt-1"
+          style={{ color: 'var(--color-text-muted)' }}
+        >
           Last 30 days. Sentiment data accumulates as the pipeline runs — may be sparse early on.
         </p>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.30)', fontFamily: 'DM Mono, monospace' }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
             yAxisId="price"
             orientation="left"
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.30)', fontFamily: 'DM Mono, monospace' }}
             axisLine={false}
             tickLine={false}
             tickFormatter={v => `$${v}`}
@@ -85,34 +91,41 @@ export function PriceSentimentChart({
             yAxisId="sentiment"
             orientation="right"
             domain={[-1, 1]}
-            tick={{ fontSize: 11, fill: '#9ca3af' }}
+            tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.30)', fontFamily: 'DM Mono, monospace' }}
             axisLine={false}
             tickLine={false}
             tickFormatter={v => v.toFixed(1)}
           />
           <Tooltip
-            contentStyle={{ fontSize: 12, borderRadius: 6, borderColor: '#e5e7eb' }}
+            contentStyle={{
+              fontSize: 12,
+              borderRadius: 10,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#EEEEF2',
+              fontFamily: 'DM Mono, monospace',
+            }}
             formatter={(value, name) => {
               const v = Number(value)
               return name === 'price' ? [`$${v.toFixed(2)}`, 'Price'] : [v.toFixed(2), 'Sentiment']
             }}
           />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
           <Line
             yAxisId="price"
             type="monotone"
             dataKey="price"
-            stroke="#111827"
-            strokeWidth={2}
+            stroke="rgba(255,255,255,0.75)"
+            strokeWidth={1.5}
             dot={false}
             name="price"
           />
           <Bar
             yAxisId="sentiment"
             dataKey="sentiment"
-            fill="#10b981"
-            opacity={0.65}
-            radius={[2, 2, 0, 0]}
+            fill="#34D399"
+            opacity={0.55}
+            radius={[3, 3, 0, 0]}
             name="sentiment"
           />
         </ComposedChart>

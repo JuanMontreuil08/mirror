@@ -11,10 +11,12 @@ type NewsPost = {
   sentiment_label: string
 }
 
-const SENTIMENT_BADGE: Record<string, string> = {
-  positive: 'bg-green-100 text-green-800',
-  neutral:  'bg-gray-100 text-gray-600',
-  negative: 'bg-red-100 text-red-800',
+function getSentimentBadgeStyle(label: string): { color: string; backgroundColor: string } {
+  switch (label) {
+    case 'positive': return { color: 'var(--color-gain)', backgroundColor: 'var(--color-gain-bg)' }
+    case 'negative': return { color: 'var(--color-loss)', backgroundColor: 'var(--color-loss-bg)' }
+    default:         return { color: 'var(--color-text-faint)', backgroundColor: 'rgba(0,0,0,0.04)' }
+  }
 }
 
 function relativeTime(iso: string): string {
@@ -32,43 +34,67 @@ export function EvidencePosts({ posts }: { posts: NewsPost[] }) {
   if (posts.length === 0) return null
 
   return (
-    <div className="rounded-lg border border-gray-100 bg-white">
+    <div className="glass-card rounded-[20px]">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between p-6 text-left hover:bg-gray-50 transition-colors rounded-lg"
+        className="w-full flex items-center justify-between p-6 text-left rounded-[20px] transition-colors"
+        style={{ color: 'var(--color-text)' }}
       >
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">News Articles</h3>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h3
+            className="font-ui text-base font-medium"
+            style={{ color: 'var(--color-text)' }}
+          >
+            News Articles
+          </h3>
+          <p
+            className="font-ui italic text-sm mt-0.5"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
             {posts.length} articles analyzed from the last 7 days
           </p>
         </div>
-        <span className="text-gray-400 text-lg ml-4">{open ? '▲' : '▼'}</span>
+        <span className="font-data text-sm ml-4" style={{ color: 'var(--color-text-faint)' }}>
+          {open ? '▲' : '▼'}
+        </span>
       </button>
 
       {open && (
-        <ul className="border-t border-gray-100 divide-y divide-gray-50">
+        <ul style={{ borderTop: '1px solid var(--color-border-sub)' }}>
           {posts.map(p => (
-            <li key={p.id} className="p-4 hover:bg-gray-50 transition-colors">
+            <li
+              key={p.id}
+              className="p-4 transition-colors"
+              style={{ borderBottom: '1px solid var(--color-border-sub)' }}
+            >
               <div className="flex items-start justify-between gap-3 mb-2">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${SENTIMENT_BADGE[p.sentiment_label] ?? SENTIMENT_BADGE.neutral}`}>
+                <span
+                  className="font-data text-[10px] uppercase tracking-[0.08em] px-2 py-0.5 rounded-[6px] flex-shrink-0"
+                  style={getSentimentBadgeStyle(p.sentiment_label)}
+                >
                   {p.sentiment_label}
                 </span>
                 <a
                   href={p.permalink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0"
+                  className="font-ui text-xs flex-shrink-0 transition-opacity hover:opacity-70"
+                  style={{ color: 'var(--color-text-faint)' }}
                 >
                   read article ↗
                 </a>
               </div>
 
-              <p className="text-sm text-gray-900 mb-2 leading-snug">{p.text}</p>
+              <p
+                className="font-ui text-sm mb-2 leading-snug"
+                style={{ color: 'var(--color-text)' }}
+              >
+                {p.text}
+              </p>
 
-              <div className="flex items-center gap-4 text-xs text-gray-400">
+              <div className="flex items-center gap-4 font-data text-[10px]" style={{ color: 'var(--color-text-faint)' }}>
                 {p.author_username && (
-                  <span className="font-medium text-gray-500">{p.author_username}</span>
+                  <span style={{ color: 'var(--color-text-muted)' }}>{p.author_username}</span>
                 )}
                 <span>{relativeTime(p.posted_at)}</span>
               </div>

@@ -300,8 +300,8 @@ export default function SentimentPage() {
             {[0, 120, 240].map(delay => (
               <span
                 key={delay}
-                className="h-2 w-2 rounded-full bg-gray-400 animate-bounce"
-                style={{ animationDelay: `${delay}ms` }}
+                className="h-2 w-2 rounded-full animate-bounce"
+                style={{ backgroundColor: 'var(--color-text-faint)', animationDelay: `${delay}ms` }}
               />
             ))}
           </div>
@@ -309,19 +309,20 @@ export default function SentimentPage() {
           <div className="text-center">
             <p
               key={loadingMsg}
-              className="text-sm text-gray-600 font-medium animate-fade-in"
+              className="font-ui italic text-sm animate-fade-in"
+              style={{ color: 'var(--color-text-muted)' }}
             >
               {loadingMsg}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="font-data text-[10px] mt-1" style={{ color: 'var(--color-text-faint)' }}>
               Step {loadingStep + 1} of {LOADING_STEPS.length}
             </p>
           </div>
 
-          <div className="w-48 h-0.5 bg-stone-100 rounded-full overflow-hidden">
+          <div className="w-48 h-0.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-border-sub)' }}>
             <div
-              className="h-full w-2/5 bg-gray-400 rounded-full"
-              style={{ animation: 'slide-indeterminate 1.6s ease-in-out infinite' }}
+              className="h-full w-2/5 rounded-full"
+              style={{ backgroundColor: 'var(--color-text-muted)', animation: 'slide-indeterminate 1.6s ease-in-out infinite' }}
             />
           </div>
         </div>
@@ -331,13 +332,14 @@ export default function SentimentPage() {
       {state === 'error' && (
         <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 30 }}>
           <div className="text-center space-y-4 px-6 animate-scale-in">
-            <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-lg">⚠️</span>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto" style={{ backgroundColor: 'var(--color-loss-bg)' }}>
+              <span className="text-lg" style={{ color: 'var(--color-loss)' }}>⚠</span>
             </div>
-            <p className="text-gray-700 font-medium text-sm">{errorMsg}</p>
+            <p className="font-ui text-sm" style={{ color: 'var(--color-text)' }}>{errorMsg}</p>
             <button
               onClick={handleReset}
-              className="text-sm text-gray-400 hover:text-gray-700 underline underline-offset-2 transition-colors"
+              className="font-ui text-sm underline underline-offset-2 transition-opacity hover:opacity-70"
+              style={{ color: 'var(--color-text-muted)' }}
             >
               Try again
             </button>
@@ -365,7 +367,10 @@ export default function SentimentPage() {
           />
           <EvidencePosts posts={data.posts} />
           <NarrativeSummary narrative={data.aggregate.narrative} />
-          <p className="text-xs text-gray-400 border-t border-stone-100 pt-4">
+          <p
+            className="font-data text-[10px] pt-4"
+            style={{ color: 'var(--color-text-faint)', borderTop: '1px solid var(--color-border-sub)' }}
+          >
             This page summarizes recent financial news sentiment. It is not investment advice,
             a recommendation, or a prediction. Sentiment data should never be the sole basis
             for investment decisions.
