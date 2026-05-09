@@ -259,8 +259,8 @@ export default function UploadPage() {
       <div
         className="w-2/5 relative flex flex-col justify-center px-12 py-16 overflow-hidden"
         style={{
-          borderRight: '1px solid rgba(255,255,255,0.07)',
-          backgroundColor: 'rgba(255,255,255,0.04)',
+          borderRight: '1px solid rgba(0,0,0,0.07)',
+          backgroundColor: 'rgba(0,0,0,0.03)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
         }}
@@ -325,10 +325,10 @@ export default function UploadPage() {
               ? `2px dashed var(--color-gain)`
               : `2px dashed var(--color-border-sub)`,
             backgroundColor: dragOver
-              ? 'rgba(255,255,255,0.08)'
+              ? 'rgba(0,0,0,0.06)'
               : selectedFile
               ? 'var(--color-gain-bg)'
-              : 'rgba(255,255,255,0.03)',
+              : 'rgba(0,0,0,0.02)',
             transform: dragOver ? 'scale(1.01)' : 'scale(1)',
           }}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}

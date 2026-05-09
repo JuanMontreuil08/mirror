@@ -71,18 +71,18 @@ export function PriceSentimentChart({
 
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
           <XAxis
             dataKey="date"
             tickFormatter={formatDate}
-            tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.30)', fontFamily: 'DM Mono, monospace' }}
+            tick={{ fontSize: 11, fill: 'rgba(0,0,0,0.40)', fontFamily: 'DM Mono, monospace' }}
             axisLine={false}
             tickLine={false}
           />
           <YAxis
             yAxisId="price"
             orientation="left"
-            tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.30)', fontFamily: 'DM Mono, monospace' }}
+            tick={{ fontSize: 11, fill: 'rgba(0,0,0,0.40)', fontFamily: 'DM Mono, monospace' }}
             axisLine={false}
             tickLine={false}
             tickFormatter={v => `$${v}`}
@@ -91,7 +91,7 @@ export function PriceSentimentChart({
             yAxisId="sentiment"
             orientation="right"
             domain={[-1, 1]}
-            tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.30)', fontFamily: 'DM Mono, monospace' }}
+            tick={{ fontSize: 11, fill: 'rgba(0,0,0,0.40)', fontFamily: 'DM Mono, monospace' }}
             axisLine={false}
             tickLine={false}
             tickFormatter={v => v.toFixed(1)}
@@ -100,10 +100,10 @@ export function PriceSentimentChart({
             contentStyle={{
               fontSize: 12,
               borderRadius: 10,
-              backgroundColor: 'rgba(255,255,255,0.08)',
+              backgroundColor: 'rgba(255,255,255,0.90)',
               backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              color: '#EEEEF2',
+              border: '1px solid rgba(0,0,0,0.10)',
+              color: '#1D1D1F',
               fontFamily: 'DM Mono, monospace',
             }}
             formatter={(value, name) => {
@@ -115,7 +115,7 @@ export function PriceSentimentChart({
             yAxisId="price"
             type="monotone"
             dataKey="price"
-            stroke="rgba(255,255,255,0.75)"
+            stroke="rgba(0,0,0,0.70)"
             strokeWidth={1.5}
             dot={false}
             name="price"

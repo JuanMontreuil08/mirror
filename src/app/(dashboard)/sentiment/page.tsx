@@ -175,7 +175,7 @@ export default function SentimentPage() {
           width: 'min(560px, calc(100vw - 48px))',
         }
       : {
-          top: '20px',
+          top: '60px',
           left: '20px',
           transform: 'translate(0, 0)',
           width: '260px',
@@ -190,7 +190,7 @@ export default function SentimentPage() {
         style={{
           zIndex: 0,
           background: isIdle
-            ? 'radial-gradient(ellipse at 60% 40%, #1a1a2e 0%, #0d0d0d 60%)'
+            ? 'radial-gradient(ellipse at 60% 40%, #eef2ff 0%, #f5f5f7 60%)'
             : 'transparent',
         }}
       />
@@ -201,7 +201,7 @@ export default function SentimentPage() {
           className="fixed inset-0 pointer-events-none"
           style={{
             zIndex: 1,
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+            backgroundImage: 'linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px)',
             backgroundSize: '40px 40px',
             opacity: 0.6,
           }}
@@ -212,10 +212,10 @@ export default function SentimentPage() {
       <div style={barStyle}>
         {isIdle && (
           <div className="text-center mb-6 animate-fade-in">
-            <p className="text-white/50 text-xs font-semibold uppercase tracking-[0.2em] mb-2 select-none">
+            <p className="text-black/40 text-xs font-semibold uppercase tracking-[0.2em] mb-2 select-none">
               News Sentiment
             </p>
-            <p className="text-white/80 text-lg font-medium select-none leading-snug">
+            <p className="text-black/75 text-lg font-medium select-none leading-snug">
               What are traders saying<br/>right now?
             </p>
           </div>
@@ -223,17 +223,23 @@ export default function SentimentPage() {
 
         <form onSubmit={handleSubmit}>
           <div
-            className={`flex items-center gap-2 rounded-2xl px-4 transition-all duration-500 ${
-              isIdle
-                ? 'bg-white/8 border border-white/15 py-4 shadow-2xl'
-                : 'bg-white border border-stone-200 py-2.5 shadow-card'
-            }`}
-            style={isIdle ? { backdropFilter: 'blur(24px)', background: 'rgba(255,255,255,0.08)' } : {}}
+            className="flex items-center gap-2 rounded-2xl px-4 transition-all duration-500"
+            style={{
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              background: 'rgba(255,255,255,0.82)',
+              border: isIdle ? '1px solid rgba(0,0,0,0.10)' : '1px solid rgba(0,0,0,0.08)',
+              paddingTop: isIdle ? '16px' : '10px',
+              paddingBottom: isIdle ? '16px' : '10px',
+              boxShadow: isIdle ? '0 4px 24px rgba(0,0,0,0.10)' : '0 2px 12px rgba(0,0,0,0.08)',
+            }}
           >
             <span
-              className={`font-bold select-none transition-all duration-500 ${
-                isIdle ? 'text-white/35 text-xl' : 'text-gray-400 text-sm'
-              }`}
+              className="font-bold select-none transition-all duration-500"
+              style={{
+                color: isIdle ? 'rgba(0,0,0,0.30)' : 'rgba(0,0,0,0.45)',
+                fontSize: isIdle ? '20px' : '14px',
+              }}
             >
               $
             </span>
@@ -249,17 +255,34 @@ export default function SentimentPage() {
               disabled={state === 'analyzing'}
               autoComplete="off"
               spellCheck={false}
-              className={`flex-1 bg-transparent outline-none font-semibold tracking-widest transition-all duration-500 ${
-                isIdle
-                  ? 'text-white placeholder:text-white/20 text-xl caret-white'
-                  : 'text-gray-800 placeholder:text-gray-400 text-sm cursor-default'
-              }`}
+              className="flex-1 bg-transparent outline-none font-semibold tracking-widest transition-all duration-500"
+              style={{
+                color: '#1D1D1F',
+                caretColor: '#1D1D1F',
+                fontSize: isIdle ? '20px' : '14px',
+                cursor: state === 'analyzing' ? 'default' : 'text',
+              }}
             />
 
             {isIdle && (
               <button
                 type="submit"
-                className="flex-shrink-0 text-xs text-white/35 border border-white/15 rounded-lg px-2.5 py-1.5 hover:text-white/70 hover:border-white/30 hover:bg-white/5 transition-all font-medium"
+                className="flex-shrink-0 text-xs border rounded-lg px-2.5 py-1.5 transition-all font-medium"
+                style={{
+                  color: 'rgba(0,0,0,0.35)',
+                  borderColor: 'rgba(0,0,0,0.15)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.color = 'rgba(0,0,0,0.70)'
+                  ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,0,0,0.30)'
+                  ;(e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.05)'
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.color = 'rgba(0,0,0,0.35)'
+                  ;(e.currentTarget as HTMLElement).style.borderColor = 'rgba(0,0,0,0.15)'
+                  ;(e.currentTarget as HTMLElement).style.background = 'transparent'
+                }}
               >
                 enter ↵
               </button>
@@ -269,7 +292,16 @@ export default function SentimentPage() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-700 transition-colors w-5 h-5 flex items-center justify-center rounded-md hover:bg-stone-100"
+                className="flex-shrink-0 text-xs w-5 h-5 flex items-center justify-center rounded-md transition-all"
+                style={{ color: 'rgba(0,0,0,0.40)' }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.color = 'rgba(0,0,0,0.80)'
+                  ;(e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.06)'
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.color = 'rgba(0,0,0,0.40)'
+                  ;(e.currentTarget as HTMLElement).style.background = 'transparent'
+                }}
               >
                 ✕
               </button>
@@ -284,7 +316,7 @@ export default function SentimentPage() {
               <button
                 key={t}
                 onClick={() => { setInputValue(t); inputRef.current?.focus() }}
-                className="text-[10px] text-white/30 hover:text-white/60 transition-colors font-mono tracking-wider px-1.5 py-0.5 rounded hover:bg-white/5"
+                className="text-[10px] text-black/35 hover:text-black/65 transition-colors font-mono tracking-wider px-1.5 py-0.5 rounded hover:bg-black/5"
               >
                 {t}
               </button>
@@ -295,13 +327,13 @@ export default function SentimentPage() {
 
       {/* Analyzing — loading state */}
       {state === 'analyzing' && (
-        <div className="fixed inset-0 flex flex-col items-center justify-center gap-5" style={{ zIndex: 30 }}>
+        <div className="fixed inset-0 flex flex-col items-center justify-center gap-5 animate-fade-in" style={{ zIndex: 30 }}>
           <div className="flex gap-1.5">
             {[0, 120, 240].map(delay => (
               <span
                 key={delay}
                 className="h-2 w-2 rounded-full animate-bounce"
-                style={{ backgroundColor: 'var(--color-text-faint)', animationDelay: `${delay}ms` }}
+                style={{ backgroundColor: 'var(--color-text-muted)', animationDelay: `${delay}ms` }}
               />
             ))}
           </div>

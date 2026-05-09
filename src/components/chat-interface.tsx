@@ -136,7 +136,7 @@ function PortfolioPanel({
   const isUp = totalPnl >= 0
 
   return (
-    <div className="flex flex-col h-full overflow-hidden animate-slide-in-right">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-5 pt-5 pb-4" style={{ borderBottom: '1px solid var(--color-border-sub)' }}>
         <div className="flex items-center justify-between mb-3">
@@ -152,7 +152,7 @@ function PortfolioPanel({
                 onClick={() => setShowFees(v => !v)}
                 className="font-data text-[9px] uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-[6px] transition-all"
                 style={{
-                  backgroundColor: showFees ? 'rgba(255,255,255,0.15)' : 'transparent',
+                  backgroundColor: showFees ? 'rgba(0,0,0,0.08)' : 'transparent',
                   color: showFees ? 'var(--color-text)' : 'var(--color-text-faint)',
                 }}
               >
@@ -208,7 +208,7 @@ function PortfolioPanel({
                 borderBottom: '1px solid var(--color-border-sub)',
                 animationDelay: `${idx * 40}ms`,
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.04)')}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.03)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               <div className="flex items-start justify-between mb-1.5">
@@ -432,10 +432,10 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
                 <button
                   type="submit"
                   disabled={!input.trim() || loading}
-                  className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0 transition-all duration-150 disabled:opacity-20"
+                  className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0 transition-all duration-200 disabled:opacity-25 hover:opacity-80 active:scale-95"
                   style={{ backgroundColor: 'var(--color-cta)' }}
                 >
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="#FFFFFF" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -480,16 +480,16 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
                       onClick={() => sendMessage(s.text)}
                       className="group text-left px-4 py-3 rounded-[20px] transition-all duration-200 animate-fade-up"
                       style={{
-                        border: '1px solid var(--color-border-sub)',
-                        backgroundColor: 'transparent',
+                        border: '1px solid rgba(0,0,0,0.09)',
+                        backgroundColor: 'rgba(255,255,255,0.60)',
                         animationDelay: `${80 + i * 60}ms`,
                       }}
                       onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.07)';
-                        (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.20)';
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.90)';
+                        (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)';
                       }}
                       onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent';
+                        (e.currentTarget as HTMLElement).style.backgroundColor = 'rgba(255,255,255,0.60)';
                         (e.currentTarget as HTMLElement).style.boxShadow = 'none';
                       }}
                     >
@@ -546,11 +546,8 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
                     <div
                       className="font-ui text-sm leading-relaxed px-4 py-2.5 rounded-[20px] rounded-br-[6px] max-w-[75%]"
                       style={{
-                        backgroundColor: 'rgba(255,255,255,0.12)',
-                        border: '1px solid rgba(255,255,255,0.10)',
-                        color: 'var(--color-text)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
+                        backgroundColor: '#1D1D1F',
+                        color: '#FFFFFF',
                       }}
                     >
                       {m.content}
@@ -589,19 +586,28 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
 
       {/* ── Portfolio panel ── */}
       <div
-        className="flex-shrink-0 overflow-hidden transition-all duration-300"
+        className="flex-shrink-0 overflow-hidden"
         style={{
           width: panelOpen ? '272px' : '0px',
-          borderLeft: panelOpen ? '1px solid rgba(255,255,255,0.08)' : 'none',
-          backgroundColor: 'rgba(255,255,255,0.04)',
+          borderLeft: panelOpen ? '1px solid rgba(0,0,0,0.07)' : 'none',
+          backgroundColor: 'rgba(255,255,255,0.65)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
-          boxShadow: panelOpen ? '-4px 0 24px rgba(0,0,0,0.30)' : 'none',
+          boxShadow: panelOpen ? '-4px 0 24px rgba(0,0,0,0.08)' : 'none',
+          opacity: panelOpen ? 1 : 0,
+          transition: 'width 300ms cubic-bezier(0.4,0,0.2,1), opacity 250ms cubic-bezier(0.4,0,0.2,1), box-shadow 300ms ease',
         }}
       >
-        {panelOpen && (
+        <div
+          style={{
+            width: '272px',
+            height: '100%',
+            transform: panelOpen ? 'translateX(0)' : 'translateX(20px)',
+            transition: 'transform 300ms cubic-bezier(0.4,0,0.2,1)',
+          }}
+        >
           <PortfolioPanel positions={positions} prices={prices} totalInvested={totalInvested} />
-        )}
+        </div>
       </div>
     </div>
   )

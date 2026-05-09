@@ -64,7 +64,7 @@ export function PolarizationBar({
             className="flex items-center justify-center font-data text-[11px]"
             style={{
               width: `${neuPct}%`,
-              backgroundColor: 'rgba(255,255,255,0.10)',
+              backgroundColor: 'rgba(0,0,0,0.10)',
               color: 'var(--color-text-muted)',
               borderRadius: '6px',
             }}
@@ -93,7 +93,7 @@ export function PolarizationBar({
           {positiveCount} positive
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(255,255,255,0.20)' }} />
+          <span className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: 'rgba(0,0,0,0.20)' }} />
           {neutralCount} neutral
         </span>
         <span className="flex items-center gap-1.5">

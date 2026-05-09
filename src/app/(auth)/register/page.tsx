@@ -50,8 +50,8 @@ export default async function RegisterPage({ searchParams }: Props) {
             placeholder="you@example.com"
             className="w-full px-4 py-2.5 text-sm rounded-[12px] outline-none transition-all placeholder:text-[var(--color-text-faint)]"
             style={{
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.10)',
+              backgroundColor: 'rgba(0,0,0,0.04)',
+              border: '1px solid rgba(0,0,0,0.10)',
               color: 'var(--color-text)',
               fontFamily: 'var(--font-ui)',
             }}
@@ -75,8 +75,8 @@ export default async function RegisterPage({ searchParams }: Props) {
             autoComplete="new-password"
             className="w-full px-4 py-2.5 text-sm rounded-[12px] outline-none transition-all"
             style={{
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.10)',
+              backgroundColor: 'rgba(0,0,0,0.04)',
+              border: '1px solid rgba(0,0,0,0.10)',
               color: 'var(--color-text)',
               fontFamily: 'var(--font-ui)',
             }}
@@ -93,8 +93,8 @@ export default async function RegisterPage({ searchParams }: Props) {
           type="submit"
           className="w-full py-2.5 rounded-[12px] text-sm font-medium mt-1 transition-colors"
           style={{
-            backgroundColor: 'rgba(255,255,255,0.90)',
-            color: '#09090F',
+            backgroundColor: '#1D1D1F',
+            color: '#FFFFFF',
             fontFamily: 'var(--font-ui)',
           }}
         >

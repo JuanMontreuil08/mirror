@@ -45,7 +45,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
             />
             <span
               className="text-xs hidden sm:block"
-              style={{ color: 'var(--color-text-faint)' }}
+              style={{ color: 'var(--color-text-muted)' }}
             >
               {user?.email}
             </span>

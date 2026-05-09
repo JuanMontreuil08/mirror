@@ -33,7 +33,7 @@ export default function RootLayout({
             overflow: 'hidden',
           }}
         >
-          {/* Indigo blob — top left */}
+          {/* Blue blob — top left */}
           <div
             className="animate-blob"
             style={{
@@ -45,11 +45,11 @@ export default function RootLayout({
               maxWidth: '800px',
               maxHeight: '800px',
               borderRadius: '50%',
-              background: 'radial-gradient(circle at center, rgba(99, 102, 241, 0.18) 0%, transparent 65%)',
+              background: 'radial-gradient(circle at center, rgba(147, 197, 253, 0.45) 0%, transparent 65%)',
               filter: 'blur(1px)',
             }}
           />
-          {/* Violet blob — bottom right */}
+          {/* Purple blob — bottom right */}
           <div
             className="animate-blob"
             style={{
@@ -61,13 +61,13 @@ export default function RootLayout({
               maxWidth: '900px',
               maxHeight: '900px',
               borderRadius: '50%',
-              background: 'radial-gradient(circle at center, rgba(139, 92, 246, 0.15) 0%, transparent 65%)',
+              background: 'radial-gradient(circle at center, rgba(196, 181, 253, 0.40) 0%, transparent 65%)',
               filter: 'blur(1px)',
               animationDelay: '-4s',
               animationDuration: '15s',
             }}
           />
-          {/* Teal blob — center-right */}
+          {/* Mint blob — center-right */}
           <div
             className="animate-blob"
             style={{
@@ -79,7 +79,7 @@ export default function RootLayout({
               maxWidth: '500px',
               maxHeight: '500px',
               borderRadius: '50%',
-              background: 'radial-gradient(circle at center, rgba(20, 184, 166, 0.10) 0%, transparent 65%)',
+              background: 'radial-gradient(circle at center, rgba(110, 231, 183, 0.30) 0%, transparent 65%)',
               filter: 'blur(1px)',
               animationDelay: '-8s',
               animationDuration: '18s',
