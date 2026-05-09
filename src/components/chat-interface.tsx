@@ -299,6 +299,7 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
         body: JSON.stringify({
           messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
           portfolioContext,
+          positions,
         }),
       })
 

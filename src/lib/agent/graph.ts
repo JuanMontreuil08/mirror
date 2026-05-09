@@ -6,8 +6,9 @@ import { z } from 'zod'
 import { getLatestPrices } from '@/lib/finnhub/client'
 import { getHistoricalPrices } from '@/lib/alpaca/client'
 import { getStockNews } from '@/lib/perplexity/client'
+import { Position } from '@/types'
 
-// ─── Tools ───────────────────────────────────────────────────────────────────
+// ─── Stateless Tools ─────────────────────────────────────────────────────────
 
 const getPricesTool = tool(
   async ({ tickers }: { tickers: string[] }) => {
@@ -19,7 +20,7 @@ const getPricesTool = tool(
   },
   {
     name: 'get_prices',
-    description: 'Get the current (real-time) price and today\'s % change for one or more tickers. Use this ONLY when the user asks about the current or today\'s price — e.g. "what is the price of X", "is X up today", "current value". Do NOT use for any past time period (use get_historical_prices instead) and do NOT use for news.',
+    description: 'Get the current (real-time) price and today\'s % change for one or more tickers. Use this ONLY when the user asks about the current or today\'s price — e.g. "what is the price of X", "is X up today", "current value". Do NOT use for any past time period (use get_historical_prices instead) and do NOT use for news. Do NOT use when portfolio_analysis would already cover the tickers.',
     schema: z.object({
       tickers: z.array(z.string()).describe('List of stock tickers, e.g. ["NVDA", "AMZN"]'),
     }),
@@ -69,18 +70,7 @@ const getNewsTool = tool(
   }
 )
 
-// ─── Graph ────────────────────────────────────────────────────────────────────
-
-const tools = [getPricesTool, getHistoricalPricesTool, getNewsTool]
-const toolNode = new ToolNode(tools)
-
-function buildModel() {
-  return new ChatGoogleGenerativeAI({
-    model: 'gemini-3-flash-preview',
-    temperature: 0.3,
-    apiKey: process.env.GOOGLE_API_KEY,
-  }).bindTools(tools)
-}
+// ─── System Prompt ────────────────────────────────────────────────────────────
 
 function buildSystemPrompt(portfolioContext: string) {
   const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD in UTC
@@ -113,12 +103,21 @@ ${portfolioContext}
 
 TOOL SELECTION — strict rules:
 
-RULE: Price RIGHT NOW / today → get_prices
+RULE: "How's my portfolio doing?" / total P&L / overall performance / portfolio summary → portfolio_analysis (NOT get_prices)
+RULE: Price RIGHT NOW / today for a single stock (not covered by portfolio_analysis context) → get_prices
 RULE: Price over a past time range → get_historical_prices
 RULE: News, headlines, earnings, analyst opinions, company events → get_news
 RULE: "How's [ticker] doing?" or any general stock check → get_prices AND get_news
 
+NEVER call portfolio_analysis AND get_prices in the same turn for the same tickers — portfolio_analysis already fetches live prices.
+NEVER call get_news when the user asks for historical prices or price performance over a time range.
+NEVER call get_prices when the user specifies a past time period (last week, last N days, this month).
+NEVER answer from training data — always call a tool.
+
 EXAMPLES:
+- "how's my portfolio?" → portfolio_analysis
+- "what's my total P&L?" → portfolio_analysis
+- "am I up or down overall?" → portfolio_analysis
 - "what is the price of NFLX?" → get_prices
 - "is NFLX up today?" → get_prices
 - "how has NFLX performed in the last 7 days?" → get_historical_prices
@@ -129,14 +128,13 @@ EXAMPLES:
 - "what's the current price and news on NFLX?" → get_prices AND get_news
 - "NFLX price history and news" → get_historical_prices AND get_news
 
-NEVER call get_news when the user asks for historical prices or price performance over a time range.
-NEVER call get_prices when the user specifies a past time period (last week, last N days, this month).
-NEVER answer from training data — always call a tool.
-
 OTHER RULES:
 - When presenting news: always include date, source, 2-3 sentence summary, and the link.
-- Format numbers clearly ($1,234.56, +2.3%).`
+- Format numbers clearly ($1,234.56, +2.3%).
+- When presenting portfolio_analysis results: explain what concentration risk means in plain language. A weight above 35% means that stock has an outsized impact on the whole portfolio — like putting more than a third of your eggs in one basket.`
 }
+
+// ─── Routing ─────────────────────────────────────────────────────────────────
 
 function shouldContinue(state: typeof MessagesAnnotation.State) {
   const last = state.messages[state.messages.length - 1]
@@ -146,8 +144,167 @@ function shouldContinue(state: typeof MessagesAnnotation.State) {
   return '__end__'
 }
 
-export function buildAgentGraph(portfolioContext: string) {
-  const model = buildModel()
+// ─── Graph ────────────────────────────────────────────────────────────────────
+
+export function buildAgentGraph(portfolioContext: string, positions: Position[] = []) {
+  // portfolio_analysis closes over positions — all math server-side, agent does zero arithmetic
+  const portfolioAnalysisTool = tool(
+    async () => {
+      if (positions.length === 0) return 'No positions in portfolio.'
+
+      let prices: Record<string, { ticker: string; price: number; changePct: number }>
+      try {
+        prices = await getLatestPrices(positions.map((p) => p.ticker))
+      } catch {
+        return 'Could not fetch current prices. Please try again.'
+      }
+
+      if (Object.keys(prices).length === 0) return 'Price data unavailable. Please try again.'
+
+      const today = new Date().toISOString().slice(0, 10)
+
+      type PositionRow = {
+        ticker: string
+        price: number
+        quantity: number
+        currentValue: number
+        totalInvested: number
+        totalFees: number
+        pnlDollar: number
+        pnlPct: number
+        pnlWithFeesDollar: number
+        pnlWithFeesPct: number
+        weight: number
+        hasFees: boolean
+        skipped: boolean
+      }
+
+      const rows: PositionRow[] = []
+      let totalCurrentValue = 0
+      let totalInvested = 0
+      let totalFees = 0
+      const skippedTickers: string[] = []
+
+      for (const pos of positions) {
+        const priceData = prices[pos.ticker]
+        if (!priceData) {
+          skippedTickers.push(pos.ticker)
+          continue
+        }
+
+        const currentValue = priceData.price * pos.quantity
+        const pnlDollar = currentValue - pos.total_invested
+        const pnlPct = (pnlDollar / pos.total_invested) * 100
+        const hasFees = pos.total_fees > 0
+        const pnlWithFeesDollar = currentValue - (pos.total_invested + pos.total_fees)
+        const pnlWithFeesPct = (pnlWithFeesDollar / pos.total_invested) * 100
+
+        rows.push({
+          ticker: pos.ticker,
+          price: priceData.price,
+          quantity: pos.quantity,
+          currentValue,
+          totalInvested: pos.total_invested,
+          totalFees: pos.total_fees,
+          pnlDollar,
+          pnlPct,
+          pnlWithFeesDollar,
+          pnlWithFeesPct,
+          weight: 0, // computed after totalCurrentValue is known
+          hasFees,
+          skipped: false,
+        })
+
+        totalCurrentValue += currentValue
+        totalInvested += pos.total_invested
+        totalFees += pos.total_fees
+      }
+
+      if (rows.length === 0) return 'Price data unavailable for all positions. Please try again.'
+
+      // Compute weights
+      for (const row of rows) {
+        row.weight = (row.currentValue / totalCurrentValue) * 100
+      }
+
+      const totalPnlDollar = totalCurrentValue - totalInvested
+      const totalPnlPct = (totalPnlDollar / totalInvested) * 100
+      const totalPnlWithFeesDollar = totalCurrentValue - (totalInvested + totalFees)
+      const totalPnlWithFeesPct = (totalPnlWithFeesDollar / totalInvested) * 100
+      const portfolioHasFees = totalFees > 0
+
+      // Sort by pnlPct descending for gainer/loser identification
+      const sorted = [...rows].sort((a, b) => b.pnlPct - a.pnlPct)
+      const biggestGainer = sorted[0]
+      const biggestLoser = sorted[sorted.length - 1]
+      const concentrationWarnings = rows.filter((r) => r.weight > 35)
+
+      // Build output string
+      const lines: string[] = [`Portfolio Analysis — ${today}:`, '']
+
+      for (const row of rows) {
+        const sign = (n: number) => (n >= 0 ? '+' : '')
+        const concWarning = row.weight > 35 ? ' ⚠ HIGH CONCENTRATION' : ''
+        lines.push(
+          `${row.ticker}: $${row.price.toFixed(2)} | Qty: ${row.quantity} | Value: $${row.currentValue.toFixed(2)} | Invested: $${row.totalInvested.toFixed(2)}`
+        )
+        lines.push(
+          `      P&L: ${sign(row.pnlDollar)}$${row.pnlDollar.toFixed(2)} (${sign(row.pnlPct)}${row.pnlPct.toFixed(1)}%) | Weight: ${row.weight.toFixed(1)}%${concWarning}`
+        )
+        if (row.hasFees) {
+          lines.push(
+            `      P&L incl. fees: ${sign(row.pnlWithFeesDollar)}$${row.pnlWithFeesDollar.toFixed(2)} (${sign(row.pnlWithFeesPct)}${row.pnlWithFeesPct.toFixed(1)}%) [fees: $${row.totalFees.toFixed(2)}]`
+          )
+        }
+        lines.push('')
+      }
+
+      lines.push('─────────────────────────────────────')
+      lines.push(`Total Invested: $${totalInvested.toFixed(2)}`)
+      lines.push(`Total Value: $${totalCurrentValue.toFixed(2)}`)
+      const totalSign = totalPnlDollar >= 0 ? '+' : ''
+      lines.push(`Total P&L: ${totalSign}$${totalPnlDollar.toFixed(2)} (${totalSign}${totalPnlPct.toFixed(1)}%)`)
+      if (portfolioHasFees) {
+        const feesSign = totalPnlWithFeesDollar >= 0 ? '+' : ''
+        lines.push(`Total P&L incl. fees: ${feesSign}$${totalPnlWithFeesDollar.toFixed(2)} (${feesSign}${totalPnlWithFeesPct.toFixed(1)}%) [total fees: $${totalFees.toFixed(2)}]`)
+      }
+      lines.push('')
+
+      if (biggestGainer && biggestLoser) {
+        const gSign = biggestGainer.pnlPct >= 0 ? '+' : ''
+        const lSign = biggestLoser.pnlPct >= 0 ? '+' : ''
+        lines.push(`Biggest gainer: ${biggestGainer.ticker} (${gSign}${biggestGainer.pnlPct.toFixed(1)}%)`)
+        if (biggestLoser.ticker !== biggestGainer.ticker) {
+          lines.push(`Biggest loser: ${biggestLoser.ticker} (${lSign}${biggestLoser.pnlPct.toFixed(1)}%)`)
+        }
+      }
+
+      if (concentrationWarnings.length > 0) {
+        const warnList = concentrationWarnings.map((r) => `${r.ticker} (${r.weight.toFixed(1)}%)`).join(', ')
+        lines.push(`⚠ Concentration warnings: ${warnList} — above 35% threshold`)
+      }
+
+      if (skippedTickers.length > 0) {
+        lines.push(`Note: no price data for ${skippedTickers.join(', ')} — excluded from totals`)
+      }
+
+      return lines.join('\n')
+    },
+    {
+      name: 'portfolio_analysis',
+      description: 'Get complete portfolio analysis: current values, P&L per position, total portfolio P&L, portfolio weights, concentration warnings. Use for overall portfolio performance questions — "how\'s my portfolio?", "what\'s my total P&L?", "am I up or down?". Do NOT use for single-stock price only (use get_prices) or news (use get_news). Do NOT call together with get_prices for the same tickers.',
+      schema: z.object({}),
+    }
+  )
+
+  const tools = [portfolioAnalysisTool, getPricesTool, getHistoricalPricesTool, getNewsTool]
+  const toolNode = new ToolNode(tools)
+
+  const model = new ChatGoogleGenerativeAI({
+    model: 'gemini-3-flash-preview',
+    temperature: 0.3,
+    apiKey: process.env.GOOGLE_API_KEY,
+  }).bindTools(tools)
 
   async function callModel(state: typeof MessagesAnnotation.State) {
     const systemMessage = { role: 'system' as const, content: buildSystemPrompt(portfolioContext) }

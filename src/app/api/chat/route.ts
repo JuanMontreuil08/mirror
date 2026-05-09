@@ -2,9 +2,10 @@ import { NextRequest } from 'next/server'
 import { HumanMessage, AIMessage, BaseMessage } from '@langchain/core/messages'
 import { buildAgentGraph } from '@/lib/agent/graph'
 import { createClient } from '@/lib/supabase/server'
+import { Position } from '@/types'
 
 export async function POST(req: NextRequest) {
-  const { messages, portfolioContext } = await req.json()
+  const { messages, portfolioContext, positions } = await req.json()
 
   // Verify auth
   const supabase = await createClient()
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
     m.role === 'user' ? new HumanMessage(m.content) : new AIMessage(m.content)
   )
 
-  const graph = buildAgentGraph(portfolioContext ?? '')
+  const graph = buildAgentGraph(portfolioContext ?? '', (positions ?? []) as Position[])
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
