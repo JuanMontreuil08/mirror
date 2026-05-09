@@ -19,6 +19,7 @@ interface Props {
   positions: Position[]
   prices: Record<string, TickerPrice>
   totalInvested: number
+  suggestedQuestions?: { text: string; icon: string }[]
 }
 
 const SUGGESTIONS = [
@@ -267,7 +268,7 @@ function TypingDots() {
 
 // ─── Chat Interface ───────────────────────────────────────────────────────────
 
-export default function ChatInterface({ portfolioContext, positions, prices, totalInvested }: Omit<Props, 'userEmail'> & { userEmail?: string }) {
+export default function ChatInterface({ portfolioContext, positions, prices, totalInvested, suggestedQuestions }: Omit<Props, 'userEmail'> & { userEmail?: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -382,7 +383,7 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
 
                 {/* Suggestion cards — 2-column grid */}
                 <div className="grid grid-cols-2 gap-2">
-                  {SUGGESTIONS.map((s, i) => (
+                  {(suggestedQuestions ?? SUGGESTIONS).map((s, i) => (
                     <button
                       key={s.text}
                       onClick={() => sendMessage(s.text)}
