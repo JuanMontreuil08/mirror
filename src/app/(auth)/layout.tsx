@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             className="font-ui text-sm mt-1"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            Your portfolio, clearly reflected.
+            See the Bigger Picture.
           </p>
         </div>
         {children}
