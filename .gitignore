@@ -36,3 +36,4 @@ next-env.d.ts
 /docs/**
 CLAUDE.md
 .playwright-mcp/
+.gstack/
