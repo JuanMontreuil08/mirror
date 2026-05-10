@@ -19,7 +19,7 @@ export async function fetchMassiveNews(ticker: string): Promise<ScoredPost[]> {
   if (!apiKey) throw new Error('MASSIVE_API_KEY is not set in environment')
 
   const symbol = ticker.toUpperCase()
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+  const sevenDaysAgo = new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString()
 
   const params = new URLSearchParams({
     ticker: symbol,
