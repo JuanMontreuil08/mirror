@@ -49,7 +49,7 @@ export async function fetchMassiveNews(ticker: string): Promise<ScoredPost[]> {
 
   for (const article of articles) {
     // Only include articles where this ticker is a primary focus (max 3 tickers total)
-    if (!article.tickers?.includes(symbol) || article.tickers.length > 3) continue
+    if (!article.tickers?.includes(symbol) || article.tickers.length > 5) continue
 
     // Require an insight for this ticker — it carries the pre-computed sentiment
     const insight = article.insights?.find(i => i.ticker === symbol)
