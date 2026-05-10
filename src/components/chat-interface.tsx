@@ -115,12 +115,23 @@ function PortfolioPanel({
   positions,
   prices,
   totalInvested,
+  lastUpdated,
+  onRefresh,
 }: {
   positions: Position[]
   prices: Record<string, TickerPrice>
   totalInvested: number
+  lastUpdated: Date
+  onRefresh: () => Promise<void>
 }) {
   const [showFees, setShowFees] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    await onRefresh()
+    setRefreshing(false)
+  }
 
   const totalFees = positions.reduce((sum, p) => sum + Number(p.total_fees ?? 0), 0)
   const hasFees = totalFees > 0
@@ -167,6 +178,20 @@ function PortfolioPanel({
               + Add
             </Link>
           </div>
+        </div>
+        {/* Timestamp + refresh */}
+        <div className="flex items-center justify-between mb-1">
+          <p className="font-data text-[9px]" style={{ color: 'var(--color-text-faint)' }}>
+            Prices as of {lastUpdated.toUTCString().replace(' GMT', ' UTC')}
+          </p>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="font-data text-[9px] transition-opacity"
+            style={{ color: 'var(--color-text-faint)', opacity: refreshing ? 0.4 : 1 }}
+          >
+            {refreshing ? 'Updating…' : '↻ Refresh'}
+          </button>
         </div>
 
         {/* Portfolio total — always colored (per DESIGN.md exception) */}
@@ -327,13 +352,25 @@ function TypingDots() {
 
 // ─── Chat Interface ───────────────────────────────────────────────────────────
 
-export default function ChatInterface({ portfolioContext, positions, prices, totalInvested, suggestedQuestions }: Omit<Props, 'userEmail'> & { userEmail?: string }) {
+export default function ChatInterface({ portfolioContext, positions, prices: initialPrices, totalInvested, suggestedQuestions }: Omit<Props, 'userEmail'> & { userEmail?: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
+  const [prices, setPrices] = useState(initialPrices)
+  const [lastUpdated, setLastUpdated] = useState(new Date())
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  async function refreshPrices() {
+    const tickers = positions.map(p => p.ticker).join(',')
+    if (!tickers) return
+    const res = await fetch(`/api/prices?tickers=${tickers}`)
+    if (!res.ok) return
+    const data = await res.json()
+    setPrices(data)
+    setLastUpdated(new Date())
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -606,7 +643,7 @@ export default function ChatInterface({ portfolioContext, positions, prices, tot
             transition: 'transform 300ms cubic-bezier(0.4,0,0.2,1)',
           }}
         >
-          <PortfolioPanel positions={positions} prices={prices} totalInvested={totalInvested} />
+          <PortfolioPanel positions={positions} prices={prices} totalInvested={totalInvested} lastUpdated={lastUpdated} onRefresh={refreshPrices} />
         </div>
       </div>
     </div>
