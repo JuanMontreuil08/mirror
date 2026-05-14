@@ -95,14 +95,28 @@ export async function extractVoucher(
     ],
   }
 
-  const response = await fetch(XAI_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30_000)
+
+  let response: Response
+  try {
+    response = await fetch(XAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('Extraction timed out after 30 seconds.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!response.ok) {
     const err = await response.text()

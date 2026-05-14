@@ -4,20 +4,33 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { processVoucher, confirmVoucherTransactions } from '@/app/actions/voucher'
-import { ExtractedTransaction, VoucherExtractionResult } from '@/types'
+import { ExtractedTransaction } from '@/types'
 
 type Step = 'upload' | 'processing' | 'review' | 'confirming'
+
+// Extends ExtractedTransaction with internal tracking fields (stripped before saving)
+type MergedTransaction = ExtractedTransaction & {
+  _fileImportId: string
+  _fileName: string
+}
+
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_FILES = 20
+const MAX_SIZE = 10 * 1024 * 1024
 
 export default function UploadPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState<Step>('upload')
   const [dragOver, setDragOver] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [fileImportId, setFileImportId] = useState<string | null>(null)
-  const [extraction, setExtraction] = useState<VoucherExtractionResult | null>(null)
-  const [transactions, setTransactions] = useState<ExtractedTransaction[]>([])
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [skipNote, setSkipNote] = useState<string | null>(null)
+  const [processingIndex, setProcessingIndex] = useState(0)
+  const [processingFileName, setProcessingFileName] = useState('')
+  const [mergedTransactions, setMergedTransactions] = useState<MergedTransaction[]>([])
+  const [failedFiles, setFailedFiles] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [requiresReview, setRequiresReview] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -25,51 +38,103 @@ export default function UploadPage() {
     return () => clearTimeout(t)
   }, [])
 
-  function handleFile(file: File) {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
-    if (!allowed.includes(file.type)) {
-      setError('File type not supported. Use JPG, PNG, WebP, or PDF.')
-      return
+  function handleFiles(incoming: File[]) {
+    let skipped = 0
+    const valid: File[] = []
+
+    for (const file of incoming) {
+      if (!ALLOWED_TYPES.includes(file.type)) { skipped++; continue }
+      if (file.size > MAX_SIZE) { skipped++; continue }
+      valid.push(file)
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File too large. Maximum size is 10MB.')
-      return
-    }
-    setSelectedFile(file)
+
+    setSelectedFiles((prev) => {
+      const existing = new Set(prev.map((f) => `${f.name}:${f.size}`))
+      let dupes = 0
+      const fresh = valid.filter((f) => {
+        const key = `${f.name}:${f.size}`
+        if (existing.has(key)) { dupes++; return false }
+        return true
+      })
+
+      const combined = [...prev, ...fresh].slice(0, MAX_FILES)
+      const capped = prev.length + fresh.length > MAX_FILES
+        ? prev.length + fresh.length - MAX_FILES
+        : 0
+
+      const notes: string[] = []
+      if (skipped > 0) notes.push(`${skipped} file${skipped > 1 ? 's' : ''} skipped (unsupported type or >10MB)`)
+      if (dupes > 0) notes.push(`${dupes} duplicate${dupes > 1 ? 's' : ''} skipped`)
+      if (capped > 0) notes.push(`limited to ${MAX_FILES} files per batch`)
+      if (notes.length > 0) setSkipNote(notes.join(' · '))
+
+      return combined
+    })
     setError(null)
+  }
+
+  function removeFile(index: number) {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
+    handleFiles(Array.from(e.dataTransfer.files))
   }
 
   async function handleAnalyze() {
-    if (!selectedFile) return
+    if (selectedFiles.length === 0) return
+    const files = selectedFiles
     setStep('processing')
+    setFailedFiles([])
     setError(null)
-    const formData = new FormData()
-    formData.append('file', selectedFile)
-    try {
-      const result = await processVoucher(formData)
-      setFileImportId(result.fileImportId)
-      setExtraction(result.extraction)
-      setTransactions(result.extraction.transactions)
-      setStep('review')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-      setStep('upload')
+
+    const results: MergedTransaction[] = []
+    const failed: string[] = []
+    let anyRequiresReview = false
+
+    for (let i = 0; i < files.length; i++) {
+      setProcessingIndex(i + 1)
+      setProcessingFileName(files[i].name)
+
+      const formData = new FormData()
+      formData.append('file', files[i])
+
+      try {
+        const result = await processVoucher(formData)
+        if (result.extraction.requires_review) anyRequiresReview = true
+        for (const tx of result.extraction.transactions) {
+          results.push({ ...tx, _fileImportId: result.fileImportId, _fileName: files[i].name })
+        }
+      } catch {
+        failed.push(files[i].name)
+      }
     }
+
+    setMergedTransactions(results)
+    setFailedFiles(failed)
+    setRequiresReview(anyRequiresReview)
+    setStep('review')
   }
 
   async function handleConfirm() {
-    if (!fileImportId || transactions.length === 0) return
+    if (mergedTransactions.length === 0) return
     setStep('confirming')
     setError(null)
+
+    // Group transactions by fileImportId
+    const groups = new Map<string, ExtractedTransaction[]>()
+    for (const tx of mergedTransactions) {
+      const { _fileImportId, _fileName, ...clean } = tx
+      if (!groups.has(_fileImportId)) groups.set(_fileImportId, [])
+      groups.get(_fileImportId)!.push(clean)
+    }
+
     try {
-      await confirmVoucherTransactions(fileImportId, transactions)
+      for (const [fileImportId, txs] of Array.from(groups.entries())) {
+        await confirmVoucherTransactions(fileImportId, txs)
+      }
       router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -78,11 +143,11 @@ export default function UploadPage() {
   }
 
   function removeTransaction(index: number) {
-    setTransactions((prev) => prev.filter((_, i) => i !== index))
+    setMergedTransactions((prev) => prev.filter((_, i) => i !== index))
   }
 
   function updateTransaction(index: number, field: keyof ExtractedTransaction, value: string) {
-    setTransactions((prev) =>
+    setMergedTransactions((prev) =>
       prev.map((tx, i) => {
         if (i !== index) return tx
         if (field === 'quantity' || field === 'price_per_share' || field === 'total_amount') {
@@ -93,54 +158,92 @@ export default function UploadPage() {
     )
   }
 
-  function resetToUpload() {
-    setStep('upload')
-    setSelectedFile(null)
-    setExtraction(null)
-    setTransactions([])
-    setError(null)
-  }
+  const isMultiFile = selectedFiles.length > 1
 
-  // ── Loading states ──────────────────────────────────────────────────────────
-  if (step === 'processing' || step === 'confirming') {
+  // ── Processing ───────────────────────────────────────────────────────────────
+  if (step === 'processing') {
+    const total = selectedFiles.length
+    const pct = total > 0 ? Math.round(((processingIndex - 1) / total) * 100) : 0
+
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-48px)] animate-fade-in" style={{ backgroundColor: 'var(--color-bg)' }}>
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: 'var(--color-cta)', borderTopColor: 'transparent' }} />
-          <p className="font-ui text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
-            {step === 'processing' ? 'Analyzing your file…' : 'Saving transactions…'}
-          </p>
-          <p className="font-ui text-xs mt-1" style={{ color: 'var(--color-text-faint)' }}>This may take a few seconds</p>
+      <div className="flex items-center justify-center h-[calc(100vh-48px)]" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="text-center max-w-xs w-full">
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-6" style={{ borderColor: 'var(--color-cta)', borderTopColor: 'transparent' }} />
+
+          {total > 1 ? (
+            <>
+              <p className="font-ui text-sm font-medium mb-1" style={{ color: 'var(--color-text)' }}>
+                Analyzing file {processingIndex} of {total}
+              </p>
+              <p className="font-data text-xs truncate mb-5" style={{ color: 'var(--color-text-faint)' }}>{processingFileName}</p>
+              {/* Progress bar */}
+              <div className="w-full rounded-full overflow-hidden" style={{ height: 3, backgroundColor: 'var(--color-border-sub)' }}>
+                <div
+                  className="h-full transition-all duration-500"
+                  style={{ width: `${pct}%`, backgroundColor: 'var(--color-cta)' }}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="font-ui text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>Analyzing your file…</p>
+              <p className="font-data text-xs mt-0.5 truncate max-w-[200px] mx-auto" style={{ color: 'var(--color-text-faint)' }}>{processingFileName}</p>
+            </>
+          )}
         </div>
       </div>
     )
   }
 
-  // ── Review step ─────────────────────────────────────────────────────────────
-  if (step === 'review' && extraction) {
+  // ── Confirming ───────────────────────────────────────────────────────────────
+  if (step === 'confirming') {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-48px)]" style={{ backgroundColor: 'var(--color-bg)' }}>
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto mb-4" style={{ borderColor: 'var(--color-cta)', borderTopColor: 'transparent' }} />
+          <p className="font-ui text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>Saving transactions…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Review step ──────────────────────────────────────────────────────────────
+  if (step === 'review') {
+    const totalTx = mergedTransactions.length
+
     return (
       <div className={`min-h-[calc(100vh-48px)] transition-all duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`} style={{ backgroundColor: 'var(--color-bg)' }}>
-        <div className="px-8 py-8 max-w-4xl mx-auto animate-fade-up">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <button
-                onClick={resetToUpload}
-                className="font-ui text-xs mb-2 block transition-colors"
-                style={{ color: 'var(--color-text-faint)' }}
-              >
-                ← Back
-              </button>
-              <h1 className="font-ui text-base font-medium tracking-tight" style={{ color: 'var(--color-text)' }}>Review extracted data</h1>
-              {extraction.extraction_notes && (
-                <p className="font-ui text-xs mt-0.5" style={{ color: 'var(--color-text-faint)' }}>{extraction.extraction_notes}</p>
-              )}
-            </div>
+        <div className="px-8 py-8 max-w-6xl mx-auto animate-fade-up">
+          <div className="mb-6">
+            <button
+              onClick={() => { setStep('upload'); setMergedTransactions([]); setFailedFiles([]) }}
+              className="font-ui text-xs mb-2 block transition-colors"
+              style={{ color: 'var(--color-text-faint)' }}
+            >
+              ← Back
+            </button>
+            <h1 className="font-ui text-base font-medium tracking-tight" style={{ color: 'var(--color-text)' }}>
+              Review extracted data
+            </h1>
+            {isMultiFile && totalTx > 0 && (
+              <p className="font-ui text-xs mt-0.5" style={{ color: 'var(--color-text-faint)' }}>
+                {totalTx} transaction{totalTx !== 1 ? 's' : ''} across {selectedFiles.length - failedFiles.length} file{selectedFiles.length - failedFiles.length !== 1 ? 's' : ''}
+              </p>
+            )}
           </div>
 
-          {extraction.requires_review && (
+          {/* Warnings */}
+          {requiresReview && totalTx > 0 && (
             <div className="mb-5 font-ui text-xs rounded-[12px] px-4 py-3 flex items-start gap-2" style={{ color: 'var(--color-warn)', backgroundColor: 'var(--color-warn-bg)', border: '1px solid var(--color-warn-bg)' }}>
               <span className="mt-0.5 flex-shrink-0">⚠</span>
               <span>Some fields have low confidence — please review before confirming.</span>
+            </div>
+          )}
+
+          {failedFiles.length > 0 && (
+            <div className="mb-5 font-ui text-xs rounded-[12px] px-4 py-3" style={{ color: 'var(--color-loss)', backgroundColor: 'var(--color-loss-bg)' }}>
+              {failedFiles.length} file{failedFiles.length > 1 ? 's' : ''} could not be read:{' '}
+              <span className="opacity-80">{failedFiles.join(', ')}</span>
             </div>
           )}
 
@@ -148,9 +251,11 @@ export default function UploadPage() {
             <div className="mb-5 font-ui text-xs rounded-[12px] px-4 py-3" style={{ color: 'var(--color-loss)', backgroundColor: 'var(--color-loss-bg)' }}>{error}</div>
           )}
 
-          {transactions.length === 0 ? (
+          {totalTx === 0 && failedFiles.length === 0 && (
             <p className="font-ui text-sm text-center py-12" style={{ color: 'var(--color-text-muted)' }}>No transactions found.</p>
-          ) : (
+          )}
+
+          {totalTx > 0 && (
             <div className="glass-card rounded-[20px] overflow-hidden mb-6">
               <table className="w-full">
                 <thead>
@@ -175,7 +280,7 @@ export default function UploadPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((tx, index) => (
+                  {mergedTransactions.map((tx, index) => (
                     <tr key={index} className="align-middle transition-colors" style={{ borderBottom: '1px solid var(--color-border-sub)' }}>
                       <td className="px-4 py-3">
                         <input
@@ -186,6 +291,11 @@ export default function UploadPage() {
                         />
                         {tx.warnings.length > 0 && (
                           <div className="font-data text-[10px] px-1.5 mt-0.5" style={{ color: 'var(--color-warn)' }}>{tx.warnings[0]}</div>
+                        )}
+                        {isMultiFile && (
+                          <div className="font-data text-[10px] px-1.5 mt-0.5 truncate max-w-[120px]" style={{ color: 'var(--color-text-faint)' }} title={tx._fileName}>
+                            {tx._fileName}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -203,10 +313,10 @@ export default function UploadPage() {
                         </select>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input type="number" step="any" className="w-24 font-data text-sm text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text-muted)' }} value={tx.quantity} onChange={(e) => updateTransaction(index, 'quantity', e.target.value)} />
+                        <input type="number" step="any" className="w-20 font-data text-sm text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text-muted)' }} value={tx.quantity} onChange={(e) => updateTransaction(index, 'quantity', e.target.value)} />
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input type="number" step="any" className="w-24 font-data text-sm text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text-muted)' }} value={tx.price_per_share} onChange={(e) => updateTransaction(index, 'price_per_share', e.target.value)} />
+                        <input type="number" step="any" className="w-20 font-data text-sm text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text-muted)' }} value={tx.price_per_share} onChange={(e) => updateTransaction(index, 'price_per_share', e.target.value)} />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <input type="number" step="any" className="w-24 font-data text-sm font-medium text-right bg-transparent border border-transparent rounded-[6px] px-1.5 py-0.5 outline-none transition-all" style={{ color: 'var(--color-text)' }} value={tx.total_amount} onChange={(e) => updateTransaction(index, 'total_amount', e.target.value)} />
@@ -231,16 +341,21 @@ export default function UploadPage() {
           )}
 
           <div className="flex items-center gap-4">
-            <button onClick={resetToUpload} className="font-ui text-sm transition-colors" style={{ color: 'var(--color-text-faint)' }}>
-              Upload another
+            <button
+              onClick={() => { setStep('upload'); setMergedTransactions([]); setFailedFiles([]) }}
+              className="font-ui text-sm transition-colors"
+              style={{ color: 'var(--color-text-faint)' }}
+            >
+              Cancel
             </button>
-            {transactions.length > 0 && (
+
+            {totalTx > 0 && (
               <button
                 onClick={handleConfirm}
                 className="font-ui text-sm font-medium px-5 py-2.5 rounded-[12px] transition-colors"
                 style={{ backgroundColor: 'var(--color-cta)', color: '#FFFFFF' }}
               >
-                Confirm {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
+                Confirm {totalTx} transaction{totalTx !== 1 ? 's' : ''}
               </button>
             )}
           </div>
@@ -249,7 +364,7 @@ export default function UploadPage() {
     )
   }
 
-  // ── Upload step ─────────────────────────────────────────────────────────────
+  // ── Upload step ──────────────────────────────────────────────────────────────
   return (
     <div
       className={`flex h-[calc(100vh-48px)] transition-all duration-500 ${mounted ? 'opacity-100' : 'opacity-0'}`}
@@ -265,7 +380,6 @@ export default function UploadPage() {
           WebkitBackdropFilter: 'blur(20px)',
         }}
       >
-        {/* Dot grid background */}
         <div className="absolute inset-0 bg-dot-grid opacity-[0.35] pointer-events-none" />
 
         <div className="relative z-10 animate-fade-up">
@@ -286,16 +400,16 @@ export default function UploadPage() {
             </svg>
           </div>
 
-          <h1 className="font-ui text-xl font-medium mb-3 tracking-tight" style={{ color: 'var(--color-text)' }}>Add position</h1>
+          <h1 className="font-ui text-xl font-medium mb-3 tracking-tight" style={{ color: 'var(--color-text)' }}>Add positions</h1>
           <p className="font-ui text-sm leading-relaxed mb-10" style={{ color: 'var(--color-text-muted)' }}>
-            Upload a photo or PDF of your trade confirmation. We&apos;ll extract the details automatically — you can review and edit before saving.
+            Upload photos of your trade confirmations. Select multiple at once — we&apos;ll analyze them all and show you one table to review before saving.
           </p>
 
           <div className="space-y-2.5">
             {[
               { icon: '🖼️', text: 'Photo of your brokerage confirmation' },
-              { icon: '📄', text: 'PDF trade receipt' },
               { icon: '📸', text: 'Screenshot of order summary' },
+              { icon: '🗂️', text: 'Select multiple at once' },
             ].map((item) => (
               <div key={item.text} className="flex items-center gap-2.5">
                 <span className="text-sm">{item.icon}</span>
@@ -304,29 +418,39 @@ export default function UploadPage() {
             ))}
           </div>
 
-          <p className="font-data text-xs mt-8" style={{ color: 'var(--color-text-faint)' }}>Max 10MB · JPG, PNG, WebP, PDF</p>
+          <p className="font-data text-xs mt-8" style={{ color: 'var(--color-text-faint)' }}>Max 10MB · JPG, PNG, WebP · Up to 20 files</p>
         </div>
       </div>
 
-      {/* Right panel — drop zone */}
+      {/* Right panel — drop zone + queue */}
       <div className="w-3/5 flex flex-col justify-center px-16 py-16">
-        {error && (
-          <div className="mb-6 font-ui text-xs rounded-[12px] px-4 py-3 animate-fade-in" style={{ color: 'var(--color-loss)', backgroundColor: 'var(--color-loss-bg)' }}>
-            {error}
+        {(error || skipNote) && (
+          <div className="mb-4 space-y-2 animate-fade-in">
+            {error && (
+              <div className="font-ui text-xs rounded-[12px] px-4 py-3" style={{ color: 'var(--color-loss)', backgroundColor: 'var(--color-loss-bg)' }}>
+                {error}
+              </div>
+            )}
+            {skipNote && (
+              <div className="font-ui text-xs rounded-[12px] px-4 py-3" style={{ color: 'var(--color-text-muted)', backgroundColor: 'rgba(0,0,0,0.04)' }}>
+                {skipNote}
+              </div>
+            )}
           </div>
         )}
 
+        {/* Drop zone */}
         <div
-          className="border-dashed rounded-[20px] p-20 text-center cursor-pointer transition-all duration-200 animate-fade-up delay-100"
+          className="border-dashed rounded-[20px] p-12 text-center cursor-pointer transition-all duration-200 animate-fade-up delay-100"
           style={{
             border: dragOver
               ? `2px dashed var(--color-cta)`
-              : selectedFile
+              : selectedFiles.length > 0
               ? `2px dashed var(--color-gain)`
               : `2px dashed var(--color-border-sub)`,
             backgroundColor: dragOver
               ? 'rgba(0,0,0,0.06)'
-              : selectedFile
+              : selectedFiles.length > 0
               ? 'var(--color-gain-bg)'
               : 'rgba(0,0,0,0.02)',
             transform: dragOver ? 'scale(1.01)' : 'scale(1)',
@@ -340,19 +464,22 @@ export default function UploadPage() {
             ref={fileInputRef}
             type="file"
             className="hidden"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            onChange={(e) => { const file = e.target.files?.[0]; if (file) handleFile(file) }}
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onChange={(e) => { if (e.target.files) handleFiles(Array.from(e.target.files)); e.target.value = '' }}
           />
 
-          {selectedFile ? (
+          {selectedFiles.length > 0 ? (
             <div className="animate-scale-in">
               <div className="w-10 h-10 rounded-[12px] flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'var(--color-gain)' }}>
                 <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="font-ui text-sm font-medium mb-0.5" style={{ color: 'var(--color-text)' }}>{selectedFile.name}</p>
-              <p className="font-data text-xs" style={{ color: 'var(--color-text-muted)' }}>{(selectedFile.size / 1024).toFixed(0)} KB · Ready to analyze</p>
+              <p className="font-ui text-sm font-medium mb-0.5" style={{ color: 'var(--color-text)' }}>
+                {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} ready
+              </p>
+              <p className="font-data text-xs" style={{ color: 'var(--color-text-muted)' }}>Click to add more</p>
             </div>
           ) : (
             <div>
@@ -362,29 +489,57 @@ export default function UploadPage() {
                 </svg>
               </div>
               <p className="font-ui text-sm mb-1" style={{ color: 'var(--color-text-muted)' }}>
-                Drop your file here or{' '}
+                Drop files here or{' '}
                 <span className="font-medium underline underline-offset-2" style={{ color: 'var(--color-text)' }}>browse</span>
               </p>
-              <p className="font-data text-xs" style={{ color: 'var(--color-text-faint)' }}>Supports JPG, PNG, WebP, PDF</p>
+              <p className="font-data text-xs" style={{ color: 'var(--color-text-faint)' }}>JPG, PNG, WebP · Select multiple</p>
             </div>
           )}
         </div>
 
-        {selectedFile && (
+        {/* File queue list */}
+        {selectedFiles.length > 0 && (
+          <div className="mt-4 space-y-1.5 animate-fade-up">
+            {selectedFiles.map((file, i) => (
+              <div
+                key={`${file.name}:${file.size}:${i}`}
+                className="flex items-center justify-between px-3 py-2 rounded-[10px]"
+                style={{ backgroundColor: 'rgba(0,0,0,0.03)', border: '1px solid var(--color-border-sub)' }}
+              >
+                <span className="font-data text-xs truncate max-w-[260px]" style={{ color: 'var(--color-text-muted)' }}>{file.name}</span>
+                <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                  <span className="font-data text-[10px]" style={{ color: 'var(--color-text-faint)' }}>{(file.size / 1024).toFixed(0)} KB</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeFile(i) }}
+                    className="font-ui text-[10px] transition-colors"
+                    style={{ color: 'var(--color-text-faint)' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {selectedFiles.length > 0 && (
           <div className="flex items-center gap-4 mt-5 animate-fade-up">
             <button
-              onClick={() => { setSelectedFile(null); setError(null) }}
+              onClick={() => { setSelectedFiles([]); setError(null); setSkipNote(null) }}
               className="font-ui text-sm transition-colors"
               style={{ color: 'var(--color-text-faint)' }}
             >
-              Clear
+              Clear all
             </button>
             <button
               onClick={handleAnalyze}
               className="font-ui text-sm font-medium px-5 py-2.5 rounded-[12px] transition-colors"
               style={{ backgroundColor: 'var(--color-cta)', color: '#FFFFFF' }}
             >
-              Analyze with AI →
+              {selectedFiles.length > 1
+                ? `Analyze ${selectedFiles.length} files with AI →`
+                : 'Analyze with AI →'}
             </button>
           </div>
         )}

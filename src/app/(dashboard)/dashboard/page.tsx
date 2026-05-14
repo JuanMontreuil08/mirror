@@ -9,8 +9,10 @@ function getSuggestedQuestions(
 ): { text: string; icon: string }[] {
   if (positions.length === 0) {
     return [
-      { text: 'How do I get started with investing?', icon: '📚' },
+      { text: 'How do I add my positions?', icon: '📤' },
       { text: "What's happening in the market today?", icon: '📊' },
+      { text: 'What can you help me with?', icon: '💡' },
+      { text: 'What stocks are trending right now?', icon: '📈' },
     ]
   }
 
