@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion, MotionValue } from 'framer-motion'
 
 const EXCHANGES = [
   {
@@ -16,7 +16,12 @@ const EXCHANGES = [
 
 type Phase = 'idle' | 'typing-user' | 'pause-after-user' | 'typing-mirror' | 'pause-after-mirror' | 'fade-out'
 
-export default function ChatDemo() {
+interface ChatDemoProps {
+  rotateX?: MotionValue<number>
+  rotateY?: MotionValue<number>
+}
+
+export default function ChatDemo({ rotateX, rotateY }: ChatDemoProps) {
   const prefersReduced = useReducedMotion()
   const [turn, setTurn] = useState(0)
   const [phase, setPhase] = useState<Phase>('idle')
@@ -68,13 +73,16 @@ export default function ChatDemo() {
       className="w-full rounded-2xl p-5"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: cardOpacity, y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut', delay: 0.6 }}
+      transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1], delay: 0.6 }}
       style={{
         background: 'rgba(255, 255, 255, 0.55)',
         backdropFilter: 'blur(28px) saturate(180%)',
         WebkitBackdropFilter: 'blur(28px) saturate(180%)',
         border: '1px solid rgba(255, 255, 255, 0.80)',
         boxShadow: '0 8px 40px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.95)',
+        // Mirror parallax — the card tilts as if catching light from different angles
+        rotateX,
+        rotateY,
       }}
     >
       <div className="flex justify-end mb-4">
