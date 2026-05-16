@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, FormEvent } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { Position } from '@/types'
 import { TickerPrice } from '@/lib/finnhub/client'
 
@@ -28,6 +29,86 @@ const SUGGESTIONS = [
   { text: 'Which stock has the highest weight?', icon: '⚖️' },
   { text: 'Show me NFLX price history for the last 2 weeks', icon: '📈' },
 ]
+
+// ─── Stock chart (rendered from ```chart code blocks in agent responses) ────────
+
+interface ChartPayload {
+  ticker: string
+  changePct: number
+  data: { date: string; close: number }[]
+}
+
+function StockChart({ ticker, changePct, data }: ChartPayload) {
+  const isUp = changePct >= 0
+  const lineColor = isUp ? 'var(--color-gain)' : 'var(--color-loss)'
+  const closes = data.map((d) => d.close)
+  const minClose = Math.min(...closes)
+  const maxClose = Math.max(...closes)
+  const pad = (maxClose - minClose) * 0.12 || 1
+
+  return (
+    <div
+      className="rounded-[16px] p-4 mb-3"
+      style={{ background: 'rgba(255,255,255,0.60)', border: '1px solid var(--color-border-sub)' }}
+    >
+      <div className="flex items-baseline gap-2 mb-3">
+        <span
+          className="font-data text-[11px] uppercase tracking-[0.12em]"
+          style={{ color: 'var(--color-text-faint)' }}
+        >
+          {ticker}
+        </span>
+        <span
+          className="font-data text-[12px] tabular-nums"
+          style={{ color: lineColor }}
+        >
+          {isUp ? '+' : ''}{changePct.toFixed(2)}%
+        </span>
+      </div>
+      <ResponsiveContainer width="100%" height={140}>
+        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.05)" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={(d: string) => d.slice(5)}
+            tick={{ fontSize: 9, fontFamily: 'var(--font-mono)', fill: 'var(--color-text-faint)' }}
+            tickLine={false}
+            axisLine={false}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            domain={[minClose - pad, maxClose + pad]}
+            tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+            tick={{ fontSize: 9, fontFamily: 'var(--font-mono)', fill: 'var(--color-text-faint)' }}
+            tickLine={false}
+            axisLine={false}
+            width={48}
+          />
+          <Tooltip
+            formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Close']}
+            contentStyle={{
+              backgroundColor: 'rgba(255,255,255,0.95)',
+              border: '1px solid var(--color-border-sub)',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--color-text)',
+            }}
+            cursor={{ stroke: 'var(--color-border-sub)', strokeWidth: 1 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="close"
+            stroke={lineColor}
+            strokeWidth={1.5}
+            dot={false}
+            activeDot={{ r: 3, fill: lineColor, strokeWidth: 0 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
 
 // ─── Markdown renderer (Instrument Serif prose + DM Mono for data) ────────────
 
@@ -57,9 +138,22 @@ function AssistantMessage({ content }: { content: string }) {
         code: ({ children }) => (
           <code className="font-data text-xs rounded px-1.5 py-0.5" style={{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border-sub)', color: 'var(--color-text-muted)' }}>{children}</code>
         ),
-        pre: ({ children }) => (
-          <pre className="font-data text-xs rounded-[12px] p-4 overflow-x-auto mb-3 leading-relaxed" style={{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border-sub)', color: 'var(--color-text-muted)' }}>{children}</pre>
-        ),
+        pre: ({ children }) => {
+          // Intercept ```chart blocks and render as StockChart
+          const child = (Array.isArray(children) ? children[0] : children) as React.ReactElement<{ className?: string; children?: React.ReactNode }>
+          if (child?.props?.className === 'language-chart') {
+            try {
+              const raw = typeof child.props.children === 'string' ? child.props.children : String(child.props.children ?? '')
+              const payload = JSON.parse(raw.trim()) as ChartPayload
+              return <StockChart {...payload} />
+            } catch {
+              // fall through to normal pre if JSON is malformed
+            }
+          }
+          return (
+            <pre className="font-data text-xs rounded-[12px] p-4 overflow-x-auto mb-3 leading-relaxed" style={{ backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border-sub)', color: 'var(--color-text-muted)' }}>{children}</pre>
+          )
+        },
         h1: ({ children }) => (
           <h1 className="font-ui text-base font-semibold mb-2 mt-4 first:mt-0" style={{ color: 'var(--color-text)' }}>{children}</h1>
         ),

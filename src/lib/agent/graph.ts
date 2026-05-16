@@ -35,11 +35,18 @@ const getHistoricalPricesTool = tool(
     const last = candles[candles.length - 1].close
     const totalChangePct = (last - first) / first * 100
     const sign = totalChangePct >= 0 ? '+' : ''
-    const header = `${ticker} — last ${candles.length} trading days (${sign}${totalChangePct.toFixed(2)}% over period):`
-    const rows = candles
-      .map((c) => `  ${c.date}: open $${c.open.toFixed(2)} | close $${c.close.toFixed(2)} | high $${c.high.toFixed(2)} | low $${c.low.toFixed(2)} | vwap $${c.vwap.toFixed(2)}`)
-      .join('\n')
-    return `${header}\n${rows}`
+    const summary = `${ticker} — last ${candles.length} trading days (${sign}${totalChangePct.toFixed(2)}% over period). First close: $${first.toFixed(2)}, latest close: $${last.toFixed(2)}.`
+
+    // Chart block — the frontend renders this as a Recharts LineChart.
+    // IMPORTANT: include this block verbatim in your response, right after the Summary section.
+    const chartPayload = {
+      ticker,
+      changePct: parseFloat(totalChangePct.toFixed(2)),
+      data: candles.map((c) => ({ date: c.date, close: parseFloat(c.close.toFixed(2)) })),
+    }
+    const chartBlock = `\`\`\`chart\n${JSON.stringify(chartPayload)}\n\`\`\``
+
+    return `${summary}\n\n${chartBlock}`
   },
   {
     name: 'get_historical_prices',
@@ -96,6 +103,8 @@ Skip this format only for very simple one-data-point questions ("what's AAPL's p
 
 TOOL CHAINING:
 When a user asks how a stock is doing — "how's my NVDA?", "what about AAPL?", "is MSFT worth holding?" — ALWAYS call BOTH get_prices AND get_news before answering. A price without context is incomplete; news without a live price is stale. Combine both in your response.
+
+CHART DISPLAY RULE: When get_historical_prices returns data, it includes a \`\`\`chart code block at the end of its output. You MUST copy this block verbatim into your response, placing it immediately after your Summary section. Do not modify the JSON inside it. Do not omit it. This is how the interface renders the price chart for the user.
 
 TODAY'S DATE: ${today}. Use this to resolve relative dates like "yesterday", "last week", "this month" when deciding how many days to pass to tools.
 
