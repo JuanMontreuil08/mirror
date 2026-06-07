@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect, FormEvent } from 'react'
+import { useState, useRef, useEffect, FormEvent, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { Position } from '@/types'
 import { TickerPrice } from '@/lib/finnhub/client'
+import ConversationSidebar from '@/components/conversation-sidebar'
 
 interface Message {
   id: string
@@ -21,6 +23,8 @@ interface Props {
   prices: Record<string, TickerPrice>
   totalInvested: number
   suggestedQuestions?: { text: string; icon: string }[]
+  conversationId?: string
+  initialMessages?: { id: string; role: 'user' | 'assistant'; content: string }[]
 }
 
 const SUGGESTIONS = [
@@ -455,15 +459,33 @@ function TypingDots() {
 
 // ─── Chat Interface ───────────────────────────────────────────────────────────
 
-export default function ChatInterface({ portfolioContext, positions, prices: initialPrices, totalInvested, suggestedQuestions }: Omit<Props, 'userEmail'> & { userEmail?: string }) {
-  const [messages, setMessages] = useState<Message[]>([])
+export default function ChatInterface({ portfolioContext, positions, prices: initialPrices, totalInvested, suggestedQuestions, conversationId: initialConversationId, initialMessages }: Omit<Props, 'userEmail'> & { userEmail?: string }) {
+  const router = useRouter()
+  const [messages, setMessages] = useState<Message[]>(
+    initialMessages?.map(m => ({ ...m })) ?? []
+  )
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [panelOpen, setPanelOpen] = useState(false)
   const [prices, setPrices] = useState(initialPrices)
   const [lastUpdated, setLastUpdated] = useState(new Date())
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(initialConversationId ?? null)
+  const [sidebarRefresh, setSidebarRefresh] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  // Tracks whether the current conversation was just created in this session.
+  // When true, we skip the initialMessages sync so the streaming response isn't wiped.
+  const justCreatedRef = useRef(false)
+
+  // Sync when URL changes (e.g. user clicks a conversation in the sidebar)
+  useEffect(() => {
+    if (justCreatedRef.current) {
+      justCreatedRef.current = false
+      return
+    }
+    setMessages(initialMessages?.map(m => ({ ...m })) ?? [])
+    setActiveConversationId(initialConversationId ?? null)
+  }, [initialConversationId])
 
   async function refreshPrices() {
     const tickers = positions.map(p => p.ticker).join(',')
@@ -478,6 +500,10 @@ export default function ChatInterface({ portfolioContext, positions, prices: ini
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const handleNewChat = useCallback(() => {
+    router.push('/dashboard')
+  }, [router])
 
   async function sendMessage(content: string) {
     if (!content.trim() || loading) return
@@ -499,10 +525,20 @@ export default function ChatInterface({ portfolioContext, positions, prices: ini
           messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
           portfolioContext,
           positions,
+          conversationId: activeConversationId,
         }),
       })
 
       if (!res.ok || !res.body) throw new Error('Request failed')
+
+      // If server created a new conversation, update URL + sidebar
+      const newConvId = res.headers.get('X-Conversation-Id')
+      if (newConvId && !activeConversationId) {
+        justCreatedRef.current = true
+        setActiveConversationId(newConvId)
+        router.replace(`/dashboard?c=${newConvId}`)
+        setSidebarRefresh(n => n + 1)
+      }
 
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -544,6 +580,13 @@ export default function ChatInterface({ portfolioContext, positions, prices: ini
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+
+      {/* ── Conversation sidebar ── */}
+      <ConversationSidebar
+        activeConversationId={activeConversationId}
+        onNewChat={handleNewChat}
+        refreshSignal={sidebarRefresh}
+      />
 
       {/* ── Chat area ── */}
       <div className="flex flex-col flex-1 min-w-0">

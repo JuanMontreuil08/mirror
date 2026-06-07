@@ -78,7 +78,12 @@ function getSuggestedQuestions(
   return results.slice(0, 4)
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ c?: string }>
+}) {
+  const { c: conversationId } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -129,20 +134,31 @@ export default async function DashboardPage() {
       ].join('\n')
 
   const tickers = positions.map((p) => p.ticker)
-  const prices: Record<string, TickerPrice> = tickers.length > 0
-    ? await getLatestPrices(tickers).catch(() => ({}))
-    : {}
 
-  const suggestedQuestions = getSuggestedQuestions(positions, prices)
+  const [prices, initialMessages] = await Promise.all([
+    tickers.length > 0 ? getLatestPrices(tickers).catch(() => ({})) : Promise.resolve({}),
+    conversationId
+      ? supabase
+          .from('messages')
+          .select('id, role, content')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true })
+          .then(({ data }) => (data ?? []) as { id: string; role: 'user' | 'assistant'; content: string }[])
+      : Promise.resolve([]),
+  ])
+
+  const suggestedQuestions = getSuggestedQuestions(positions, prices as Record<string, TickerPrice>)
 
   return (
     <ChatInterface
       portfolioContext={portfolioContext}
       userEmail={user!.email ?? ''}
       positions={positions}
-      prices={prices}
+      prices={prices as Record<string, TickerPrice>}
       totalInvested={totalInvested}
       suggestedQuestions={suggestedQuestions}
+      conversationId={conversationId}
+      initialMessages={initialMessages}
     />
   )
 }
