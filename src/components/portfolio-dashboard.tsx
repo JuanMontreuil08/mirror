@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Position, Transaction } from '@/types'
 import { TickerPrice } from '@/lib/finnhub/client'
-import { NewsItem } from '@/lib/firecrawl/client'
+import { NewsItem } from '@/lib/massive/client'
 import { fetchStockNews } from '@/app/actions/news'
 
 // ─── Ticker Logo ──────────────────────────────────────────────────────────────

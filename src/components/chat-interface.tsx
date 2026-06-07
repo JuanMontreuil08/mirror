@@ -196,6 +196,15 @@ function AssistantMessage({ content }: { content: string }) {
           <blockquote className="pl-3 mb-3 font-ui italic" style={{ borderLeft: '2px solid var(--color-border-sub)', color: 'var(--color-text-muted)' }}>{children}</blockquote>
         ),
         hr: () => <hr className="my-4" style={{ borderColor: 'var(--color-border-sub)' }} />,
+        img: ({ src, alt }) => src ? (
+          <img
+            src={src}
+            alt={alt ?? ''}
+            className="float-right ml-3 mb-2 rounded-lg object-cover flex-shrink-0"
+            style={{ width: 72, height: 72 }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+          />
+        ) : null,
       }}
     >
       {content}

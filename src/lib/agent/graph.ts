@@ -1,11 +1,11 @@
 import { StateGraph, MessagesAnnotation } from '@langchain/langgraph'
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai'
+import { ChatAnthropic } from '@langchain/anthropic'
 import { tool } from '@langchain/core/tools'
 import { ToolNode } from '@langchain/langgraph/prebuilt'
 import { z } from 'zod'
 import { getLatestPrices } from '@/lib/finnhub/client'
 import { getHistoricalPrices } from '@/lib/alpaca/client'
-import { getStockNews } from '@/lib/perplexity/client'
+import { getStockNews } from '@/lib/massive/client'
 import { Position } from '@/types'
 
 // ─── Stateless Tools ─────────────────────────────────────────────────────────
@@ -64,7 +64,10 @@ const getNewsTool = tool(
     const news = await getStockNews(ticker, days ?? 7)
     if (news.length === 0) return `No news found for ${ticker} in the last ${days ?? 7} days.`
     return news
-      .map((n, i) => `${i + 1}. ${n.title}\n   Date: ${n.date} | Source: ${n.source}\n   ${n.summary}\n   Link: ${n.url}`)
+      .map((n, i) => {
+        const img = n.image_url ? `IMAGE:${n.image_url}` : ''
+        return [img, `${i + 1}. ${n.title}`, `   Date: ${n.date} | Source: ${n.source}`, `   ${n.summary}`, `   Link: ${n.url}`].filter(Boolean).join('\n')
+      })
       .join('\n\n')
   },
   {
@@ -105,6 +108,8 @@ TOOL CHAINING:
 When a user asks how a stock is doing — "how's my NVDA?", "what about AAPL?", "is MSFT worth holding?" — ALWAYS call BOTH get_prices AND get_news before answering. A price without context is incomplete; news without a live price is stale. Combine both in your response.
 
 CHART DISPLAY RULE: When get_historical_prices returns data, it includes a \`\`\`chart code block at the end of its output. You MUST copy this block verbatim into your response, placing it immediately after your Summary section. Do not modify the JSON inside it. Do not omit it. This is how the interface renders the price chart for the user.
+
+NEWS IMAGE RULE: When get_news returns a news item that starts with IMAGE:<url>, you MUST include ![](url) in your response immediately before that news item's title. Example: if the tool returns "IMAGE:https://example.com/img.jpg\n1. Title...", write "![](https://example.com/img.jpg)\n📌 **Title**..." — copy the URL exactly, do not omit it.
 
 TODAY'S DATE: ${today}. Use this to resolve relative dates like "yesterday", "last week", "this month" when deciding how many days to pass to tools.
 
@@ -311,10 +316,10 @@ export function buildAgentGraph(portfolioContext: string, positions: Position[] 
   const tools = [portfolioAnalysisTool, getPricesTool, getHistoricalPricesTool, getNewsTool]
   const toolNode = new ToolNode(tools)
 
-  const model = new ChatGoogleGenerativeAI({
-    model: 'gemini-3-flash-preview',
-    temperature: 0.3,
-    apiKey: process.env.GOOGLE_API_KEY,
+  const model = new ChatAnthropic({
+    model: 'claude-sonnet-4-6',
+    temperature: 0.1,
+    apiKey: process.env.ANTHROPIC_API_KEY,
   }).bindTools(tools)
 
   async function callModel(state: typeof MessagesAnnotation.State) {

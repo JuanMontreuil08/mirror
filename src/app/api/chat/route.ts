@@ -31,8 +31,17 @@ export async function POST(req: NextRequest) {
         for await (const event of eventStream) {
           if (event.event === 'on_chat_model_stream') {
             const chunk = event.data?.chunk
-            const text = chunk?.content
-            if (typeof text === 'string' && text) {
+            const content = chunk?.content
+            let text = ''
+            if (typeof content === 'string') {
+              text = content
+            } else if (Array.isArray(content)) {
+              text = content
+                .filter((b: { type: string }) => b.type === 'text')
+                .map((b: { text: string }) => b.text)
+                .join('')
+            }
+            if (text) {
               controller.enqueue(encoder.encode(text))
             }
           }

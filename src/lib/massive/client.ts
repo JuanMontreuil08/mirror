@@ -2,6 +2,69 @@ import type { ScoredPost } from '@/lib/sentiment/types'
 
 const MASSIVE_API_BASE = 'https://api.massive.com/v2/reference'
 
+// ─── News for agent chat ───────────────────────────────────────────────────────
+
+export interface NewsItem {
+  id: string
+  title: string
+  source: string
+  date: string
+  summary: string
+  url: string
+  image_url?: string
+}
+
+export async function getStockNews(ticker: string, days = 7): Promise<NewsItem[]> {
+  const apiKey = process.env.MASSIVE_API_KEY
+  if (!apiKey) {
+    console.error('[get_news] MASSIVE_API_KEY is not set')
+    return []
+  }
+
+  const symbol = ticker.toUpperCase()
+  const since = new Date(Date.now() - days * 24 * 3600 * 1000).toISOString()
+
+  const params = new URLSearchParams({
+    ticker: symbol,
+    limit: '10',
+    sort: 'published_utc',
+    order: 'desc',
+    'published_utc.gte': since,
+  })
+
+  const res = await fetch(`${MASSIVE_API_BASE}/news?${params}`, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: 'application/json',
+    },
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    const body = await res.text()
+    console.error(`[get_news] Massive API ${res.status} for ${ticker}:`, body)
+    return []
+  }
+
+  const data = await res.json()
+  const articles: MassiveArticle[] = data.results ?? []
+
+  console.log(`[get_news] ${ticker}: ${articles.length} results. Titles:`, articles.map(a => a.title))
+
+  return articles
+    .filter(a => a.tickers?.includes(symbol))
+    .slice(0, 5)
+    .map((a, i) => ({
+      id: a.id ?? String(i),
+      title: a.title,
+      source: a.publisher?.name ?? 'News',
+      date: a.published_utc?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+      summary: a.description ?? '',
+      url: a.article_url,
+      image_url: a.image_url,
+    }))
+}
+
 // ─── Score mapping ─────────────────────────────────────────────────────────────
 // Converts Massive insight sentiment label to a signed score matching ScoredPost.
 // Confidence is fixed at 0.8 — news insights are specific and sourced.
@@ -86,6 +149,7 @@ type MassiveArticle = {
   title: string
   description: string | null
   article_url: string
+  image_url?: string
   author: string | null
   published_utc: string
   tickers: string[]

@@ -1,4 +1,3 @@
-import type { XPost } from '@/lib/x/types'
 import type { SentimentLabel, PolarizationLabel } from './labels'
 
 export type SentimentScore = {
@@ -7,7 +6,19 @@ export type SentimentScore = {
   confidence: number  // 0 to 1
 }
 
-export type ScoredPost = XPost & SentimentScore
+export type ScoredPost = {
+  id: string
+  text: string
+  cleanedText: string
+  authorUsername: string | null
+  authorName: string | null
+  permalink: string
+  likeCount: number
+  replyCount: number
+  retweetCount: number
+  quoteCount: number
+  createdAt: Date
+} & SentimentScore
 
 export type SentimentAggregate = {
   score: number

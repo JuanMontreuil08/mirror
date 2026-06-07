@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@huggingface/inference": "^4.13.15",
+    "@langchain/anthropic": "^1.4.0",
     "@langchain/core": "^1.1.41",
     "@langchain/google-genai": "^2.1.28",
     "@langchain/langgraph": "^1.2.9",
@@ -23,6 +23,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@next/swc-darwin-arm64": "^16.2.7",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
