@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { processVoucher, confirmVoucherTransactions } from '@/app/actions/voucher'
-import { ExtractedTransaction } from '@/types'
+import { processVoucher, confirmVoucherTransactions, getPendingEmailImports } from '@/app/actions/voucher'
+import { ExtractedTransaction, VoucherExtractionResult } from '@/types'
 
 type Step = 'upload' | 'processing' | 'review' | 'confirming'
 
@@ -12,6 +12,7 @@ type Step = 'upload' | 'processing' | 'review' | 'confirming'
 type MergedTransaction = ExtractedTransaction & {
   _fileImportId: string
   _fileName: string
+  _source?: 'email' | 'upload'
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
@@ -31,11 +32,42 @@ export default function UploadPage() {
   const [failedFiles, setFailedFiles] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [requiresReview, setRequiresReview] = useState(false)
+  const [hasEmailPending, setHasEmailPending] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 20)
     return () => clearTimeout(t)
+  }, [])
+
+  // Load any pending email-detected transactions on mount
+  useEffect(() => {
+    getPendingEmailImports().then((pending) => {
+      if (pending.length === 0) return
+
+      const results: MergedTransaction[] = []
+      let anyRequiresReview = false
+
+      for (const imp of pending) {
+        const extraction = imp.extracted_data as VoucherExtractionResult
+        if (extraction.requires_review) anyRequiresReview = true
+        for (const tx of extraction.transactions) {
+          results.push({
+            ...tx,
+            _fileImportId: imp.id,
+            _fileName: imp.file_name ?? 'Gmail',
+            _source: 'email',
+          })
+        }
+      }
+
+      if (results.length > 0) {
+        setMergedTransactions(results)
+        setRequiresReview(anyRequiresReview)
+        setHasEmailPending(true)
+        setStep('review')
+      }
+    })
   }, [])
 
   function handleFiles(incoming: File[]) {
@@ -126,7 +158,7 @@ export default function UploadPage() {
     // Group transactions by fileImportId
     const groups = new Map<string, ExtractedTransaction[]>()
     for (const tx of mergedTransactions) {
-      const { _fileImportId, _fileName, ...clean } = tx
+      const { _fileImportId, _fileName, _source, ...clean } = tx
       if (!groups.has(_fileImportId)) groups.set(_fileImportId, [])
       groups.get(_fileImportId)!.push(clean)
     }
@@ -216,7 +248,7 @@ export default function UploadPage() {
         <div className="px-8 py-8 max-w-6xl mx-auto animate-fade-up">
           <div className="mb-6">
             <button
-              onClick={() => { setStep('upload'); setMergedTransactions([]); setFailedFiles([]) }}
+              onClick={() => { setStep('upload'); setMergedTransactions([]); setFailedFiles([]); setHasEmailPending(false) }}
               className="font-ui text-xs mb-2 block transition-colors"
               style={{ color: 'var(--color-text-faint)' }}
             >
@@ -231,6 +263,17 @@ export default function UploadPage() {
               </p>
             )}
           </div>
+
+          {/* Email-detected banner */}
+          {hasEmailPending && totalTx > 0 && (
+            <div className="mb-5 font-ui text-xs rounded-[12px] px-4 py-3 flex items-start gap-2" style={{ color: 'var(--color-text)', backgroundColor: 'rgba(0,0,0,0.04)', border: '1px solid var(--color-border-sub)' }}>
+              <span className="mt-0.5 flex-shrink-0">✉</span>
+              <span>
+                <span className="font-medium">Detected from Gmail.</span>{' '}
+                Review the extracted data below and confirm to add to your portfolio.
+              </span>
+            </div>
+          )}
 
           {/* Warnings */}
           {requiresReview && totalTx > 0 && (
@@ -342,7 +385,7 @@ export default function UploadPage() {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={() => { setStep('upload'); setMergedTransactions([]); setFailedFiles([]) }}
+              onClick={() => { setStep('upload'); setMergedTransactions([]); setFailedFiles([]); setHasEmailPending(false) }}
               className="font-ui text-sm transition-colors"
               style={{ color: 'var(--color-text-faint)' }}
             >

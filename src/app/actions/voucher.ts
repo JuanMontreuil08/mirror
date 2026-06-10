@@ -88,6 +88,24 @@ export async function processVoucher(
   return { fileImportId: fileImport.id, extraction }
 }
 
+export async function getPendingEmailImports(): Promise<
+  { id: string; file_name: string; extracted_data: VoucherExtractionResult }[]
+> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data } = await supabase
+    .from('file_imports')
+    .select('id, file_name, extracted_data')
+    .eq('user_id', user.id)
+    .eq('file_type', 'email_voucher')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
+  return (data ?? []) as { id: string; file_name: string; extracted_data: VoucherExtractionResult }[]
+}
+
 export async function confirmVoucherTransactions(
   fileImportId: string,
   transactions: ExtractedTransaction[]

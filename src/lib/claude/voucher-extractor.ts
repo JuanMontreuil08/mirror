@@ -61,6 +61,74 @@ If the document is not a stock purchase receipt, return:
 
 type SupportedMediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf'
 
+export async function extractVoucherFromEmail(
+  htmlBody: string
+): Promise<VoucherExtractionResult> {
+  const apiKey = process.env.XAI_API_KEY
+  if (!apiKey) throw new Error('XAI_API_KEY is not set')
+
+  const text = htmlBody
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const body = {
+    model: MODEL,
+    max_tokens: 1500,
+    messages: [
+      {
+        role: 'system',
+        content: SYSTEM_PROMPT,
+      },
+      {
+        role: 'user',
+        content: `Extract the transaction data from this brokerage confirmation email:\n\n${text}`,
+      },
+    ],
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 30_000)
+
+  let response: Response
+  try {
+    response = await fetch(XAI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('Extraction timed out after 30 seconds.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  if (!response.ok) {
+    const err = await response.text()
+    throw new Error(`xAI API error ${response.status}: ${err}`)
+  }
+
+  const data = await response.json()
+  const raw: string = data.choices?.[0]?.message?.content ?? ''
+
+  try {
+    return JSON.parse(raw) as VoucherExtractionResult
+  } catch {
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (match) return JSON.parse(match[0]) as VoucherExtractionResult
+    throw new Error('Model did not return valid JSON')
+  }
+}
+
 export async function extractVoucher(
   fileBuffer: Buffer,
   mediaType: SupportedMediaType
