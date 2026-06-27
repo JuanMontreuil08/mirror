@@ -67,17 +67,32 @@ export const processGmailVoucher = task({
       const extraction = await extractVoucherFromEmail(htmlBody)
 
       if (extraction.transactions.length > 0) {
-        await supabase.from('file_imports').insert({
-          user_id: payload.userId,
-          file_name: subjectHeader || `Email from ${fromHeader}`,
-          file_type: 'email_voucher',
-          file_url: null,
-          status: 'pending',
-          extracted_data: extraction,
-          processed_at: new Date().toISOString(),
-        })
-        processed++
-        logger.info('Voucher queued for review', { messageId, count: extraction.transactions.length })
+        const fileName = subjectHeader || `Email from ${fromHeader}`
+
+        // Dedup: skip if a pending record for this message already exists
+        const { count } = await supabase
+          .from('file_imports')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', payload.userId)
+          .eq('file_type', 'email_voucher')
+          .eq('file_name', fileName)
+          .eq('status', 'pending')
+
+        if (count && count > 0) {
+          logger.info('Skipping duplicate', { messageId })
+        } else {
+          await supabase.from('file_imports').insert({
+            user_id: payload.userId,
+            file_name: fileName,
+            file_type: 'email_voucher',
+            file_url: null,
+            status: 'pending',
+            extracted_data: extraction,
+            processed_at: new Date().toISOString(),
+          })
+          processed++
+          logger.info('Voucher queued for review', { messageId, count: extraction.transactions.length })
+        }
       } else {
         logger.info('No transactions found in email', { messageId })
       }

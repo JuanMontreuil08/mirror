@@ -37,4 +37,4 @@ next-env.d.ts
 CLAUDE.md
 .playwright-mcp/
 .gstack/
-.agents/
+.agents/.trigger/
