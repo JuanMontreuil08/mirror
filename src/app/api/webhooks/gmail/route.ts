@@ -2,7 +2,7 @@
 // Google Pub/Sub calls this endpoint when a new email arrives in a watched inbox.
 // Payload is a base64-encoded Pub/Sub message containing { emailAddress, historyId }.
 import { NextRequest, NextResponse } from 'next/server'
-import { tasks } from '@trigger.dev/sdk/v3'
+import { tasks } from '@trigger.dev/sdk'
 import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(req: NextRequest) {

@@ -1,14 +1,11 @@
-import { task, logger } from '@trigger.dev/sdk/v3'
+import { task, logger } from '@trigger.dev/sdk'
 import { extractVoucherFromEmail } from '@/lib/claude/voucher-extractor'
 import { createServiceClient } from '@/lib/supabase/service'
 
-// Brokers whose emails we process
-const BROKER_DOMAINS = ['hapi.trade']
+const BROKER_QUERY = 'from:hapi.trade subject:"Order Executed" is:unread'
 
 interface Payload {
   userId: string
-  historyId: string          // latest historyId from the Pub/Sub push
-  previousHistoryId: string  // last saved historyId — used to fetch delta
   accessToken: string
   refreshToken: string
   tokenExpiresAt: string
@@ -19,58 +16,33 @@ export const processGmailVoucher = task({
   retry: { maxAttempts: 3, minTimeoutInMs: 2000, factor: 2 },
 
   run: async (payload: Payload) => {
-    const { userId, historyId, previousHistoryId } = payload
     const supabase = createServiceClient()
-
-    // 1. Refresh access token if expired
     const accessToken = await getValidToken(payload, supabase)
 
-    // 2. Fetch Gmail history since last known point to get new message IDs
-    const historyRes = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/history` +
-      `?startHistoryId=${previousHistoryId}&historyTypes=messageAdded`,
+    // Search unread emails from Hapi
+    const searchRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(BROKER_QUERY)}&maxResults=20`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     )
 
-    if (!historyRes.ok) {
-      const text = await historyRes.text()
-      logger.error('Gmail history fetch failed', { status: historyRes.status, text })
-      await supabase.from('user_integrations')
-        .update({ status: 'error', error_message: `History fetch failed: ${historyRes.status}` })
-        .eq('user_id', userId).eq('provider', 'gmail')
-      return { processed: 0, error: 'history_fetch_failed' }
+    if (!searchRes.ok) {
+      logger.error('Gmail search failed', { status: searchRes.status })
+      return { processed: 0, error: 'search_failed' }
     }
 
-    const history = await historyRes.json()
-    const messages: { id: string }[] = (history.history ?? [])
-      .flatMap((h: { messagesAdded?: { message: { id: string } }[] }) =>
-        h.messagesAdded?.map((m: { message: { id: string } }) => m.message) ?? []
-      )
+    const search = await searchRes.json()
+    const messages: { id: string }[] = search.messages ?? []
 
     if (messages.length === 0) {
-      logger.info('No new messages in history', { userId })
-      await supabase.from('user_integrations')
-        .update({ gmail_history_id: historyId })
-        .eq('user_id', userId).eq('provider', 'gmail')
+      logger.info('No unread Hapi emails found')
       return { processed: 0 }
     }
 
+    logger.info(`Found ${messages.length} unread Hapi emails`)
     let processed = 0
 
     for (const { id: messageId } of messages) {
-      // 3. Deduplication — skip if already processed
-      const { data: integration } = await supabase
-        .from('user_integrations')
-        .select('last_processed_message_id')
-        .eq('user_id', userId).eq('provider', 'gmail')
-        .single()
-
-      if (integration?.last_processed_message_id === messageId) {
-        logger.info('Skipping already processed message', { messageId })
-        continue
-      }
-
-      // 4. Fetch full message
+      // Fetch full message
       const msgRes = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -78,61 +50,59 @@ export const processGmailVoucher = task({
       if (!msgRes.ok) continue
       const msg = await msgRes.json()
 
-      // 5. Filter by broker domain
-      const fromHeader: string = msg.payload?.headers
-        ?.find((h: { name: string; value: string }) => h.name === 'From')?.value ?? ''
-      if (!BROKER_DOMAINS.some(domain => fromHeader.includes(domain))) continue
-
-      // 6. Extract HTML body
-      const htmlBody = extractHtmlBody(msg)
-      if (!htmlBody) {
-        logger.warn('No HTML body in message', { messageId })
-        continue
-      }
-
-      // 7. AI extraction
-      logger.info('Extracting voucher', { messageId, from: fromHeader })
-      const extraction = await extractVoucherFromEmail(htmlBody)
-
-      if (extraction.transactions.length === 0) {
-        logger.info('No transactions found', { messageId })
-        continue
-      }
-
-      // 8. Store as a pending file_import — user will review and confirm via the upload tab
       const subjectHeader: string = msg.payload?.headers
         ?.find((h: { name: string; value: string }) => h.name === 'Subject')?.value ?? ''
-      const fileName = subjectHeader || `Email from ${fromHeader}`
+      const fromHeader: string = msg.payload?.headers
+        ?.find((h: { name: string; value: string }) => h.name === 'From')?.value ?? ''
 
-      await supabase.from('file_imports').insert({
-        user_id: userId,
-        file_name: fileName,
-        file_type: 'email_voucher',
-        file_url: null,
-        status: 'pending',
-        extracted_data: extraction,
-        processed_at: new Date().toISOString(),
-      })
+      const htmlBody = extractHtmlBody(msg)
+      if (!htmlBody) {
+        logger.warn('No HTML body', { messageId })
+        await markAsRead(messageId, accessToken)
+        continue
+      }
 
-      // 9. Mark message as processed
-      await supabase.from('user_integrations')
-        .update({ last_processed_message_id: messageId })
-        .eq('user_id', userId).eq('provider', 'gmail')
+      // AI extraction
+      logger.info('Extracting voucher', { messageId, subject: subjectHeader })
+      const extraction = await extractVoucherFromEmail(htmlBody)
 
-      processed++
-      logger.info('Voucher queued for review', { messageId, count: extraction.transactions.length })
+      if (extraction.transactions.length > 0) {
+        await supabase.from('file_imports').insert({
+          user_id: payload.userId,
+          file_name: subjectHeader || `Email from ${fromHeader}`,
+          file_type: 'email_voucher',
+          file_url: null,
+          status: 'pending',
+          extracted_data: extraction,
+          processed_at: new Date().toISOString(),
+        })
+        processed++
+        logger.info('Voucher queued for review', { messageId, count: extraction.transactions.length })
+      } else {
+        logger.info('No transactions found in email', { messageId })
+      }
+
+      // Mark as read regardless — avoids reprocessing on next button press
+      await markAsRead(messageId, accessToken)
     }
-
-    // 10. Advance historyId for next push
-    await supabase.from('user_integrations')
-      .update({ gmail_history_id: historyId, status: 'active', error_message: null })
-      .eq('user_id', userId).eq('provider', 'gmail')
 
     return { processed }
   },
 })
 
-// --- helpers ---
+async function markAsRead(messageId: string, accessToken: string) {
+  await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ removeLabelIds: ['UNREAD'] }),
+    }
+  )
+}
 
 function extractHtmlBody(msg: {
   payload: {
@@ -157,7 +127,6 @@ async function getValidToken(
   supabase: ReturnType<typeof createServiceClient>
 ): Promise<string> {
   const isExpired = Date.now() > new Date(payload.tokenExpiresAt).getTime() - 60_000
-
   if (!isExpired) return payload.accessToken
 
   const res = await fetch('https://oauth2.googleapis.com/token', {

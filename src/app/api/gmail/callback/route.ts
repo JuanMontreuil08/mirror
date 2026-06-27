@@ -1,7 +1,6 @@
 // GET /api/gmail/callback — Google redirects here after user grants access
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { setupGmailWatch } from '@/lib/gmail/watch'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
@@ -69,9 +68,6 @@ export async function GET(req: NextRequest) {
     console.error('DB upsert failed:', dbError)
     return NextResponse.redirect(`${appUrl}/dashboard?gmail=error`)
   }
-
-  // Register Gmail push watch so Google notifies us on new emails
-  await setupGmailWatch(userId, tokens.access_token)
 
   const redirectRes = NextResponse.redirect(`${appUrl}/dashboard?gmail=connected`)
   redirectRes.cookies.delete('gmail_oauth_nonce')

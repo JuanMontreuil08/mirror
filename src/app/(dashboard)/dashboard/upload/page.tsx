@@ -34,6 +34,8 @@ export default function UploadPage() {
   const [requiresReview, setRequiresReview] = useState(false)
   const [hasEmailPending, setHasEmailPending] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [gmailSyncing, setGmailSyncing] = useState(false)
+  const [gmailStatus, setGmailStatus] = useState<'idle' | 'triggered' | 'not_connected' | 'error'>('idle')
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 20)
@@ -188,6 +190,57 @@ export default function UploadPage() {
         return { ...tx, [field]: value }
       })
     )
+  }
+
+  async function handleGmailSync() {
+    setGmailSyncing(true)
+    setGmailStatus('idle')
+    try {
+      const res = await fetch('/api/gmail/sync', { method: 'POST' })
+      if (res.status === 400) {
+        setGmailStatus('not_connected')
+        setGmailSyncing(false)
+        return
+      }
+      if (!res.ok) {
+        setGmailStatus('error')
+        setGmailSyncing(false)
+        return
+      }
+
+      setGmailStatus('triggered')
+
+      // Poll for results every 1.5s for up to 30s
+      const deadline = Date.now() + 30_000
+      const poll = async () => {
+        const pending = await getPendingEmailImports()
+        if (pending.length > 0) {
+          const results: MergedTransaction[] = []
+          let anyRequiresReview = false
+          for (const imp of pending) {
+            const extraction = imp.extracted_data as VoucherExtractionResult
+            if (extraction.requires_review) anyRequiresReview = true
+            for (const tx of extraction.transactions) {
+              results.push({ ...tx, _fileImportId: imp.id, _fileName: imp.file_name ?? 'Gmail', _source: 'email' })
+            }
+          }
+          setMergedTransactions(results)
+          setRequiresReview(anyRequiresReview)
+          setHasEmailPending(true)
+          setStep('review')
+          setGmailSyncing(false)
+        } else if (Date.now() < deadline) {
+          setTimeout(poll, 1500)
+        } else {
+          setGmailStatus('error')
+          setGmailSyncing(false)
+        }
+      }
+      setTimeout(poll, 2000)
+    } catch {
+      setGmailStatus('error')
+      setGmailSyncing(false)
+    }
   }
 
   const isMultiFile = selectedFiles.length > 1
@@ -462,6 +515,40 @@ export default function UploadPage() {
           </div>
 
           <p className="font-data text-xs mt-8" style={{ color: 'var(--color-text-faint)' }}>Max 10MB · JPG, PNG, WebP · Up to 20 files</p>
+
+          {/* Gmail sync */}
+          <div className="mt-8 pt-8" style={{ borderTop: '1px solid var(--color-border-sub)' }}>
+            <p className="font-ui text-xs mb-3" style={{ color: 'var(--color-text-faint)' }}>Or import from Gmail</p>
+            <button
+              onClick={handleGmailSync}
+              disabled={gmailSyncing || gmailStatus === 'triggered'}
+              className="font-ui text-xs font-medium px-4 py-2 rounded-[10px] transition-colors flex items-center gap-2 disabled:opacity-50"
+              style={{ backgroundColor: 'rgba(0,0,0,0.06)', color: 'var(--color-text)' }}
+            >
+              {gmailSyncing ? (
+                <>
+                  <div className="w-3 h-3 border border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--color-text-faint)', borderTopColor: 'transparent' }} />
+                  Scanning Gmail...
+                </>
+              ) : gmailStatus === 'triggered' ? (
+                'Scanning... reloading shortly'
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                  Scan unread Hapi emails
+                </>
+              )}
+            </button>
+            {gmailStatus === 'not_connected' && (
+              <p className="font-ui text-xs mt-2" style={{ color: 'var(--color-warn)' }}>
+                Gmail not connected.{' '}
+                <a href="/api/gmail" className="underline underline-offset-2">Connect Gmail</a>
+              </p>
+            )}
+            {gmailStatus === 'error' && (
+              <p className="font-ui text-xs mt-2" style={{ color: 'var(--color-loss)' }}>Something went wrong. Try again.</p>
+            )}
+          </div>
         </div>
       </div>
 
